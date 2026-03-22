@@ -1,0 +1,67 @@
+[package]
+name = "embedded-debugger"
+version = "0.1.0"
+edition = "2021"
+authors = ["Embedded Debugger Team"]
+description = "Cross-platform embedded board debugging tool"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/embedded-debugger"
+
+[workspace]
+members = [".", "src-tauri"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full", "tracing"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures = "0.3"
+
+# Serial port (cross-platform)
+serial2-tokio = { version = "0.1", features = ["windows", "unix"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Regex
+regex = "1.10"
+
+# Async Trait
+async-trait = "0.1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Bytes
+bytes = "1.5"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.9"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = []
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "z"
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true

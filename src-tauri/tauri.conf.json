@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/tooling/schema.json",
+  "build": {
+    "beforeDevCommand": "cd ../frontend && bun run dev",
+    "beforeBuildCommand": "cd ../frontend && bun run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../frontend/dist",
+    "withGlobalTauri": false
+  },
+  "package": {
+    "productName": "embedded-debugger",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "scope": ["$APPDATA/*", "$HOME/*"]
+      },
+      "dialog": {
+        "all": false,
+        "open": true,
+        "save": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.embedded-debugger.app",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Embedded Debugger",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+# Rust/Cargo
+target/
+Cargo.lock
+*.pdb
+*.pdb.gz
+*.exe
+*.dll
+*.so
+*.dylib
+*.rlib
+*.rmeta
+*.a
+*.lib
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun.lock
+dist/
+.npm
+.yarn-integrity
+.eslintcache
+
+# Tauri
+src-tauri/target/
+src-tauri/Cargo.lock
+src-tauri/target/
+src-tauri/gen/
+*.app
+
+# Build outputs
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+.classpath
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Project-specific
+.sisyphus/
