@@ -275,7 +275,6 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn test_error_code_read_failed() {
         let err = ConnectionError::ReadFailed {
             port: "test".to_string(),
