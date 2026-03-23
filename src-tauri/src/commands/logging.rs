@@ -1,7 +1,7 @@
 //! Logging management commands
 
 use super::{CommandResponse, ok, err};
-use crate::ipc::{LogDirection, LogEntry, LoggingStatus};
+use crate::ipc::{LogDirection, LoggingStatus};
 use crate::state::AppState;
 use embedded_debugger::logger::{FileLogger, Logger, LoggerConfig};
 use std::path::Path;

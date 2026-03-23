@@ -1,7 +1,7 @@
 //! Connection management commands
 
 use super::{CommandResponse, ok, err};
-use crate::ipc::{ConnectionParams, ConnectionStatus as IpcConnectionStatus, IpcError, SerialPortInfo};
+use crate::ipc::{ConnectionParams, ConnectionStatus as IpcConnectionStatus, SerialPortInfo};
 use crate::state::AppState;
 use embedded_debugger::connection::{ConnectionConfig, ConnectionType, SerialConfig, TelnetConfig};
 use embedded_debugger::connection::types::{DataBits, FlowControl, Parity, StopBits};

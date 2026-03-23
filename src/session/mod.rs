@@ -3,7 +3,7 @@
 //! Manages session lifecycle and connection pooling
 
 pub use self::types::{SessionState, SessionMetadata, SessionId, SessionManagerConfig, SessionManagerStats};
-pub use self::manager::SessionManager;
+pub use self::manager::{SessionManager, SessionCallbacks};
 pub use self::connection_registry::ConnectionRegistry;
 
 pub mod types;

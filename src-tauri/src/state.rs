@@ -11,14 +11,20 @@ use embedded_debugger::command::parser::DefaultCommandParser;
 use embedded_debugger::logger::FileLogger;
 use embedded_debugger::session::manager::SessionManager;
 
+use crate::data_streamer::{DataStreamerConfig, DataStreamerManager};
+
 pub struct AppState {
     pub session_manager: Arc<RwLock<SessionManager>>,
     pub command_manager: Arc<RwLock<DefaultCommandManager>>,
     pub loggers: Arc<RwLock<HashMap<String, FileLogger>>>,
+    pub data_streamer_manager: Arc<DataStreamerManager>,
 }
 
 impl AppState {
-    pub fn new() -> Self {
+    pub fn new(app: tauri::AppHandle) -> Self {
+        let data_streamer_manager =
+            Arc::new(DataStreamerManager::new(app, DataStreamerConfig::default()));
+
         let session_manager = Arc::new(RwLock::new(SessionManager::new()));
 
         let parser = Box::new(DefaultCommandParser::default());
@@ -28,15 +34,13 @@ impl AppState {
             session_manager,
             command_manager,
             loggers: Arc::new(RwLock::new(HashMap::new())),
+            data_streamer_manager,
         }
     }
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        Self::new()
+        panic!("AppState cannot be created with default() - use AppState::new(app_handle)")
     }
 }
-
-// AppState uses Arc<RwLock<...>> for all internal state, which is already Send + Sync
-// The unsafe impl is not needed since all components are properly thread-safe

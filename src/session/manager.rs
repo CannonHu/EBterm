@@ -8,7 +8,7 @@ use tokio::sync::{mpsc, RwLock};
 use uuid::Uuid;
 
 use super::types::{SessionId, SessionManagerConfig, SessionManagerStats, SessionMetadata, SessionState};
-use super::SessionError;
+use super::{ConnectionRegistry, SessionError};
 use crate::connection::{ConnectionType, ConnectionConfig, ConnectionFactory};
 
 /// Event types that can be emitted by sessions
@@ -26,6 +26,78 @@ pub enum SessionEvent {
     Error(SessionId, String),
     /// Session was closed
     Closed(SessionId),
+}
+
+/// Session lifecycle callbacks for external integration
+///
+/// These callbacks are invoked at specific points in the session lifecycle,
+/// allowing external code (e.g., Tauri layer) to react to session events.
+pub struct SessionCallbacks {
+    /// Called when a session successfully connects
+    /// Parameters: (session_id, connection_registry)
+    pub on_connected: Option<Box<dyn Fn(SessionId, Arc<RwLock<ConnectionRegistry>>) + Send + Sync + 'static>>,
+    
+    /// Called when a session disconnects
+    /// Parameters: (session_id)
+    pub on_disconnected: Option<Box<dyn Fn(SessionId) + Send + Sync + 'static>>,
+    
+    /// Called when a session encounters an error
+    /// Parameters: (session_id, error_message)
+    pub on_error: Option<Box<dyn Fn(SessionId, String) + Send + Sync + 'static>>,
+}
+
+impl SessionCallbacks {
+    /// Create new empty callbacks (no-ops)
+    pub fn new() -> Self {
+        Self {
+            on_connected: None,
+            on_disconnected: None,
+            on_error: None,
+        }
+    }
+    
+    /// Set the on_connected callback
+    pub fn with_on_connected<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(SessionId, Arc<RwLock<ConnectionRegistry>>) + Send + Sync + 'static,
+    {
+        self.on_connected = Some(Box::new(callback));
+        self
+    }
+    
+    /// Set the on_disconnected callback
+    pub fn with_on_disconnected<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(SessionId) + Send + Sync + 'static,
+    {
+        self.on_disconnected = Some(Box::new(callback));
+        self
+    }
+    
+    /// Set the on_error callback
+    pub fn with_on_error<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(SessionId, String) + Send + Sync + 'static,
+    {
+        self.on_error = Some(Box::new(callback));
+        self
+    }
+}
+
+impl Default for SessionCallbacks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Debug for SessionCallbacks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionCallbacks")
+            .field("on_connected", &self.on_connected.as_ref().map(|_| "Some(Fn)"))
+            .field("on_disconnected", &self.on_disconnected.as_ref().map(|_| "Some(Fn)"))
+            .field("on_error", &self.on_error.as_ref().map(|_| "Some(Fn)"))
+            .finish()
+    }
 }
 
 pub struct Session {
@@ -116,12 +188,18 @@ pub struct SessionManager {
     event_sender: mpsc::Sender<SessionEvent>,
     #[allow(dead_code)]
     event_receiver: Arc<RwLock<mpsc::Receiver<SessionEvent>>>,
-    connection_registry: Arc<RwLock<super::ConnectionRegistry>>,
+    connection_registry: Arc<RwLock<ConnectionRegistry>>,
+    callbacks: SessionCallbacks,
 }
 
 impl SessionManager {
     /// Create a new session manager with default configuration
     pub fn new() -> Self {
+        Self::with_callbacks(SessionCallbacks::new())
+    }
+    
+    /// Create a new session manager with callbacks
+    pub fn with_callbacks(callbacks: SessionCallbacks) -> Self {
         let config = SessionManagerConfig::default();
         let (event_sender, event_receiver) = mpsc::channel(100);
 
@@ -131,12 +209,18 @@ impl SessionManager {
             stats: Arc::new(RwLock::new(SessionManagerStats::default())),
             event_sender,
             event_receiver: Arc::new(RwLock::new(event_receiver)),
-            connection_registry: Arc::new(RwLock::new(super::ConnectionRegistry::new())),
+            connection_registry: Arc::new(RwLock::new(ConnectionRegistry::new())),
+            callbacks,
         }
     }
 
     /// Create a new session manager with custom configuration
     pub fn with_config(config: SessionManagerConfig) -> Self {
+        Self::with_config_and_callbacks(config, SessionCallbacks::new())
+    }
+    
+    /// Create a new session manager with custom configuration and callbacks
+    pub fn with_config_and_callbacks(config: SessionManagerConfig, callbacks: SessionCallbacks) -> Self {
         let (event_sender, event_receiver) = mpsc::channel(100);
 
         Self {
@@ -145,7 +229,8 @@ impl SessionManager {
             stats: Arc::new(RwLock::new(SessionManagerStats::default())),
             event_sender,
             event_receiver: Arc::new(RwLock::new(event_receiver)),
-            connection_registry: Arc::new(RwLock::new(super::ConnectionRegistry::new())),
+            connection_registry: Arc::new(RwLock::new(ConnectionRegistry::new())),
+            callbacks,
         }
     }
 
@@ -265,6 +350,10 @@ impl SessionManager {
         }
 
         let _ = self.event_sender.send(SessionEvent::StateChanged(session_id.clone(), SessionState::Connected)).await;
+        
+        if let Some(ref callback) = self.callbacks.on_connected {
+            callback(session_id.clone(), self.connection_registry.clone());
+        }
 
         Ok(())
     }
@@ -305,6 +394,10 @@ impl SessionManager {
         }
 
         let _ = self.event_sender.send(SessionEvent::StateChanged(session_id.clone(), SessionState::Disconnected)).await;
+        
+        if let Some(ref callback) = self.callbacks.on_disconnected {
+            callback(session_id.clone());
+        }
 
         Ok(())
     }
@@ -421,6 +514,11 @@ impl SessionManager {
         session.metadata.set_name(new_name);
         
         Ok(())
+    }
+    
+    /// Get a reference to the connection registry
+    pub fn connection_registry(&self) -> Arc<RwLock<ConnectionRegistry>> {
+        self.connection_registry.clone()
     }
 }
 
