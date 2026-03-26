@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import type { CommandResult } from '../types/ipc';
 
 export async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<CommandResult<T>> {

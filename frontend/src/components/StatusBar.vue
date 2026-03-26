@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { NButton } from 'naive-ui';
-import { Clock as ClockIcon, Search as SearchIcon } from '@vicons/ionicons5';
+import { Time as ClockIcon, Search as SearchIcon } from '@vicons/carbon';
 import { useConnectionStore } from '../stores/connection';
 import { useSessionStore } from '../stores/session';
 import { useTerminalStore } from '../stores/terminal';
@@ -146,4 +146,3 @@ function openSearch(): void {
   color: #18a058;
 }
 </style>
-</content>
