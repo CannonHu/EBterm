@@ -8,13 +8,13 @@ use tokio::sync::RwLock;
 
 use embedded_debugger::command::manager::DefaultCommandManager;
 use embedded_debugger::command::parser::DefaultCommandParser;
+use embedded_debugger::connection::ConnectionManager;
 use embedded_debugger::logger::FileLogger;
-use embedded_debugger::session::manager::SessionManager;
 
-use crate::data_streamer::{DataStreamerConfig, DataStreamerManager};
+use crate::data_streamer::DataStreamerManager;
 
 pub struct AppState {
-    pub session_manager: Arc<RwLock<SessionManager>>,
+    pub connection_manager: Arc<RwLock<ConnectionManager>>,
     pub command_manager: Arc<RwLock<DefaultCommandManager>>,
     pub loggers: Arc<RwLock<HashMap<String, FileLogger>>>,
     pub data_streamer_manager: Arc<DataStreamerManager>,
@@ -22,16 +22,15 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(app: tauri::AppHandle) -> Self {
-        let data_streamer_manager =
-            Arc::new(DataStreamerManager::new(app, DataStreamerConfig::default()));
+        let data_streamer_manager = Arc::new(DataStreamerManager::new(app));
 
-        let session_manager = Arc::new(RwLock::new(SessionManager::new()));
+        let connection_manager = Arc::new(RwLock::new(ConnectionManager::new()));
 
         let parser = Box::new(DefaultCommandParser::default());
         let command_manager = Arc::new(RwLock::new(DefaultCommandManager::new(parser)));
 
         Self {
-            session_manager,
+            connection_manager,
             command_manager,
             loggers: Arc::new(RwLock::new(HashMap::new())),
             data_streamer_manager,

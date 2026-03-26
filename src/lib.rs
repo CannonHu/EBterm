@@ -8,7 +8,6 @@
 //! - Real-time logging
 
 pub mod connection;
-pub mod session;
 pub mod logger;
 pub mod command;
 pub mod error;

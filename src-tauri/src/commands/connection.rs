@@ -3,18 +3,8 @@
 use super::{CommandResponse, ok, err};
 use crate::ipc::{ConnectionParams, ConnectionStatus as IpcConnectionStatus, SerialPortInfo};
 use crate::state::AppState;
-use embedded_debugger::connection::{ConnectionConfig, ConnectionType, SerialConfig, TelnetConfig};
-use embedded_debugger::connection::types::{DataBits, FlowControl, Parity, StopBits};
-use embedded_debugger::session::types::SessionState;
-
-fn session_state_to_ipc(state: &SessionState) -> IpcConnectionStatus {
-    match state {
-        SessionState::Created | SessionState::Connecting => IpcConnectionStatus::Connecting,
-        SessionState::Connected => IpcConnectionStatus::Connected,
-        SessionState::Disconnecting | SessionState::Disconnected => IpcConnectionStatus::Disconnected,
-        SessionState::Error(_) => IpcConnectionStatus::Error,
-    }
-}
+use embedded_debugger::connection::{ConnectionConfig, SerialConfig, TelnetConfig};
+use embedded_debugger::connection::types::{ConnectionType, DataBits, FlowControl, Parity, StopBits};
 
 #[tauri::command]
 pub async fn list_serial_ports() -> CommandResponse<Vec<SerialPortInfo>> {
@@ -85,13 +75,12 @@ pub async fn connect(
     state: tauri::State<'_, AppState>,
     params: ConnectionParams,
 ) -> CommandResponse<String> {
-    let (connection_type, connection_config, connection_name) = convert_connection_params(params);
-    let session_name = connection_name.clone();
+    let (_, connection_config, connection_name) = convert_connection_params(params);
 
-    let manager = state.session_manager.read().await;
+    let manager = state.connection_manager.read().await;
 
-    match manager.create_session(session_name, connection_type, connection_config).await {
-        Ok(session_id) => ok(session_id),
+    match manager.create_connection(connection_name, connection_config).await {
+        Ok(connection_id) => ok(connection_id),
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }
 }
@@ -99,11 +88,11 @@ pub async fn connect(
 #[tauri::command]
 pub async fn disconnect(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
 ) -> CommandResponse<()> {
-    let manager = state.session_manager.read().await;
+    let manager = state.connection_manager.read().await;
 
-    match manager.close_session(&session_id).await {
+    match manager.disconnect(&connection_id).await {
         Ok(_) => ok(()),
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }
@@ -112,28 +101,34 @@ pub async fn disconnect(
 #[tauri::command]
 pub async fn get_connection_status(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
 ) -> CommandResponse<IpcConnectionStatus> {
-    let manager = state.session_manager.read().await;
+    let manager = state.connection_manager.read().await;
 
-    match manager.get_session(&session_id).await {
-        Some(session) => {
-            let status = session_state_to_ipc(session.state());
+    match manager.get_connection(&connection_id).await {
+        Some(connection_info) => {
+            let status = match connection_info.status.as_str() {
+                "Disconnected" => IpcConnectionStatus::Disconnected,
+                "Connecting" => IpcConnectionStatus::Connecting,
+                "Connected" => IpcConnectionStatus::Connected,
+                "Error" => IpcConnectionStatus::Error,
+                _ => IpcConnectionStatus::Disconnected,
+            };
             ok(status)
         }
-        None => err(format!("SESSION_NOT_FOUND: Session '{}' not found", session_id)),
+        None => err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id)),
     }
 }
 
 #[tauri::command]
 pub async fn write_data(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
     data: Vec<u8>,
 ) -> CommandResponse<()> {
-    let manager = state.session_manager.read().await;
+    let manager = state.connection_manager.read().await;
 
-    match manager.write_session_data(&session_id, data).await {
+    match manager.write(&connection_id, data).await {
         Ok(_) => ok(()),
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }
@@ -142,10 +137,10 @@ pub async fn write_data(
 #[tauri::command]
 pub async fn write_text(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
     text: String,
 ) -> CommandResponse<()> {
-    write_data(state, session_id, text.into_bytes()).await
+    write_data(state, connection_id, text.into_bytes()).await
 }
 
 #[cfg(test)]

@@ -9,36 +9,27 @@ use std::path::Path;
 #[tauri::command]
 pub async fn start_logging(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
     file_path: String,
 ) -> CommandResponse<()> {
-    let manager = state.session_manager.read().await;
+    let config = LoggerConfig {
+        max_file_size: 10 * 1024 * 1024,
+        max_backup_files: 5,
+        compress_rotated: true,
+        buffer_size: 8192,
+    };
 
-    match manager.get_session(&session_id).await {
-        Some(_) => {
-            let config = LoggerConfig {
-                max_file_size: 10 * 1024 * 1024,
-                max_backup_files: 5,
-                compress_rotated: true,
-                buffer_size: 8192,
-            };
+    let mut logger = FileLogger::with_config(config);
 
-            let mut logger = FileLogger::with_config(config);
+    match logger.start_logging(Path::new(&file_path)).await {
+        Ok(_) => {
+            let mut loggers = state.loggers.write().await;
+            loggers.insert(connection_id.clone(), logger);
 
-            match logger.start_logging(Path::new(&file_path)).await {
-                Ok(_) => {
-                    let mut loggers = state.loggers.write().await;
-                    loggers.insert(session_id.clone(), logger);
-
-                    ok(())
-                }
-                Err(e) => {
-                    err(format!("{}: {}", e.code(), e))
-                }
-            }
+            ok(())
         }
-        None => {
-            err(format!("SESSION_NOT_FOUND: Session '{}' not found", session_id))
+        Err(e) => {
+            err(format!("Failed to start logging: {}", e))
         }
     }
 }
@@ -46,22 +37,22 @@ pub async fn start_logging(
 #[tauri::command]
 pub async fn stop_logging(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
 ) -> CommandResponse<()> {
     let mut loggers = state.loggers.write().await;
 
-    match loggers.remove(&session_id) {
+    match loggers.remove(&connection_id) {
         Some(mut logger) => {
             match logger.stop_logging().await {
                 Ok(_) => ok(()),
                 Err(e) => {
-                    loggers.insert(session_id.clone(), logger);
-                    err(format!("{}: {}", e.code(), e))
+                    loggers.insert(connection_id.clone(), logger);
+                    err(format!("Failed to stop logging: {}", e))
                 }
             }
         }
         None => {
-            err(format!("LOGGING_NOT_ENABLED: Logging is not enabled for session '{}'", session_id))
+            err(format!("LOGGING_NOT_ENABLED: Logging is not enabled for connection '{}'", connection_id))
         }
     }
 }
@@ -69,11 +60,11 @@ pub async fn stop_logging(
 #[tauri::command]
 pub async fn get_logging_status(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
 ) -> CommandResponse<LoggingStatus> {
     let loggers = state.loggers.read().await;
 
-    match loggers.get(&session_id) {
+    match loggers.get(&connection_id) {
         Some(logger) => {
             let stats = logger.stats();
             let file_path = logger.current_log_path().map(|p| p.to_string_lossy().to_string());
@@ -103,26 +94,26 @@ pub async fn get_logging_status(
 #[tauri::command]
 pub async fn log_data(
     state: tauri::State<'_, AppState>,
-    session_id: String,
+    connection_id: String,
     direction: LogDirection,
     data: Vec<u8>,
 ) -> CommandResponse<()> {
     let mut loggers = state.loggers.write().await;
 
-    match loggers.get_mut(&session_id) {
+    match loggers.get_mut(&connection_id) {
         Some(logger) => {
             let result = match direction {
-                LogDirection::Input => logger.log_input(&session_id, &data).await,
-                LogDirection::Output => logger.log_output(&session_id, &data).await,
+                LogDirection::Input => logger.log_input(&connection_id, &data).await,
+                LogDirection::Output => logger.log_output(&connection_id, &data).await,
             };
 
             match result {
                 Ok(_) => ok(()),
-                Err(e) => err(format!("{}: {}", e.code(), e))
+                Err(e) => err(format!("Failed to log data: {}", e))
             }
         }
         None => {
-            err(format!("LOGGING_NOT_ENABLED: Logging is not enabled for session '{}'", session_id))
+            err(format!("LOGGING_NOT_ENABLED: Logging is not enabled for connection '{}'", connection_id))
         }
     }
 }

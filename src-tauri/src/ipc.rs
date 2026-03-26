@@ -205,21 +205,21 @@ pub struct SerialPortInfo {
 /// Data received event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataReceivedEvent {
-    pub session_id: String,
+    pub connection_id: String,
     pub data: Vec<u8>,
 }
 
 /// Status changed event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusChangedEvent {
-    pub session_id: String,
+    pub connection_id: String,
     pub status: ConnectionStatus,
 }
 
 /// Error occurred event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorOccurredEvent {
-    pub session_id: String,
+    pub connection_id: String,
     pub error: IpcError,
 }
 

@@ -3,7 +3,6 @@
 //! Provides command handlers for frontend-to-backend communication
 
 pub mod connection;
-pub mod session;
 pub mod logging;
 pub mod command;
 

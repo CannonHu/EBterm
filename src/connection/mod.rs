@@ -4,13 +4,18 @@
 
 use thiserror::Error;
 
+pub mod manager;
+pub mod registry;
 pub mod types;
 pub mod serial;
 pub mod telnet;
 
+pub use self::manager::{ConnectionManager, ConnectionInfo, ConnectionManagerStats};
+pub use self::registry::ConnectionRegistry;
 pub use self::types::{
     Connection, ConnectionConfig, ConnectionFactory, ConnectionStats, ConnectionStatus,
     ConnectionType, DataBits, FlowControl, Parity, SerialConfig, StopBits, TelnetConfig,
+    ConnectionHandle,
 };
 pub use self::serial::SerialConnection;
 pub use self::telnet::TelnetConnection;
