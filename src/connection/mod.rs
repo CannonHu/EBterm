@@ -9,6 +9,7 @@ pub mod registry;
 pub mod types;
 pub mod serial;
 pub mod telnet;
+pub mod discovery;
 
 pub use self::manager::{ConnectionManager, ConnectionInfo, ConnectionManagerStats};
 pub use self::registry::ConnectionRegistry;
@@ -19,6 +20,7 @@ pub use self::types::{
 };
 pub use self::serial::SerialConnection;
 pub use self::telnet::TelnetConnection;
+pub use self::discovery::{discover_serial_ports, DiscoveredPort, DiscoveryError};
 
 /// Connection-related errors
 #[derive(Error, Debug)]

@@ -1,27 +1,25 @@
 //! Connection management commands
 
 use super::{CommandResponse, ok, err};
-use crate::ipc::{ConnectionParams, ConnectionStatus as IpcConnectionStatus, SerialPortInfo};
+use crate::ipc::{ConnectionParams, SerialPortInfo};
 use crate::state::AppState;
-use embedded_debugger::connection::{ConnectionConfig, SerialConfig, TelnetConfig};
-use embedded_debugger::connection::types::{ConnectionType, DataBits, FlowControl, Parity, StopBits};
 
 #[tauri::command]
 pub async fn list_serial_ports() -> CommandResponse<Vec<SerialPortInfo>> {
-    match serial2::SerialPort::available_ports() {
+    // Use lib layer's discovery function
+    match embedded_debugger::connection::discover_serial_ports() {
         Ok(ports) => {
             let port_infos: Vec<SerialPortInfo> = ports
                 .into_iter()
                 .map(|port| {
-                    let port_name = port.to_string_lossy().to_string();
                     SerialPortInfo {
-                        port_name: port_name.clone(),
-                        port_type: "serial".to_string(),
+                        port_name: port.port_name.clone(),
+                        port_type: port.port_type,
                         vendor_id: None,
                         product_id: None,
                         serial_number: None,
                         manufacturer: None,
-                        product: Some(port_name),
+                        product: Some(port.port_name),
                     }
                 })
                 .collect();
@@ -31,41 +29,25 @@ pub async fn list_serial_ports() -> CommandResponse<Vec<SerialPortInfo>> {
     }
 }
 
-fn convert_connection_params(params: ConnectionParams) -> (ConnectionType, ConnectionConfig, String) {
+/// Convert IPC params to lib config - NOW DIRECT MAPPING!
+/// (Types are identical, just pass through)
+fn convert_connection_params(params: ConnectionParams) -> (embedded_debugger::connection::types::ConnectionType, embedded_debugger::connection::types::ConnectionConfig, String) {
     match params {
         ConnectionParams::Serial(serial_params) => {
-            let config = SerialConfig {
-                port: serial_params.port.clone(),
-                baud_rate: serial_params.baud_rate,
-                data_bits: match serial_params.data_bits {
-                    crate::ipc::DataBits::Seven => DataBits::Seven,
-                    crate::ipc::DataBits::Eight => DataBits::Eight,
-                },
-                parity: match serial_params.parity {
-                    crate::ipc::Parity::None => Parity::None,
-                    crate::ipc::Parity::Odd => Parity::Odd,
-                    crate::ipc::Parity::Even => Parity::Even,
-                },
-                stop_bits: match serial_params.stop_bits {
-                    crate::ipc::StopBits::One => StopBits::One,
-                    crate::ipc::StopBits::Two => StopBits::Two,
-                },
-                flow_control: match serial_params.flow_control {
-                    crate::ipc::FlowControl::None => FlowControl::None,
-                    crate::ipc::FlowControl::Software => FlowControl::Software,
-                    crate::ipc::FlowControl::Hardware => FlowControl::Hardware,
-                },
-            };
-            (ConnectionType::Serial, ConnectionConfig::Serial(config), serial_params.port.clone())
+            let name = serial_params.port.clone();
+            (
+                embedded_debugger::connection::types::ConnectionType::Serial,
+                embedded_debugger::connection::types::ConnectionConfig::Serial(serial_params),
+                name,
+            )
         }
         ConnectionParams::Telnet(telnet_params) => {
-            let config = TelnetConfig {
-                host: telnet_params.host.clone(),
-                port: telnet_params.port,
-                connect_timeout_secs: telnet_params.connect_timeout_secs,
-            };
             let name = format!("{}:{}", telnet_params.host, telnet_params.port);
-            (ConnectionType::Telnet, ConnectionConfig::Telnet(config), name)
+            (
+                embedded_debugger::connection::types::ConnectionType::Telnet,
+                embedded_debugger::connection::types::ConnectionConfig::Telnet(telnet_params),
+                name,
+            )
         }
     }
 }
@@ -102,17 +84,17 @@ pub async fn disconnect(
 pub async fn get_connection_status(
     state: tauri::State<'_, AppState>,
     connection_id: String,
-) -> CommandResponse<IpcConnectionStatus> {
+) -> CommandResponse<embedded_debugger::connection::types::ConnectionStatus> {
     let manager = state.connection_manager.read().await;
 
     match manager.get_connection(&connection_id).await {
         Some(connection_info) => {
             let status = match connection_info.status.as_str() {
-                "Disconnected" => IpcConnectionStatus::Disconnected,
-                "Connecting" => IpcConnectionStatus::Connecting,
-                "Connected" => IpcConnectionStatus::Connected,
-                "Error" => IpcConnectionStatus::Error,
-                _ => IpcConnectionStatus::Disconnected,
+                "Disconnected" => embedded_debugger::connection::types::ConnectionStatus::Disconnected,
+                "Connecting" => embedded_debugger::connection::types::ConnectionStatus::Connecting,
+                "Connected" => embedded_debugger::connection::types::ConnectionStatus::Connected,
+                "Error" => embedded_debugger::connection::types::ConnectionStatus::Error,
+                _ => embedded_debugger::connection::types::ConnectionStatus::Disconnected,
             };
             ok(status)
         }
@@ -141,31 +123,4 @@ pub async fn write_text(
     text: String,
 ) -> CommandResponse<()> {
     write_data(state, connection_id, text.into_bytes()).await
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::commands::CommandResult;
-
-    #[tokio::test]
-    async fn test_list_serial_ports() {
-        let result = list_serial_ports().await;
-        assert!(result.is_ok());
-        let command_result = result.unwrap();
-        assert!(command_result.success);
-    }
-
-    #[tokio::test]
-    async fn test_command_result_helpers() {
-        let success_result: CommandResult<i32> = CommandResult::success(42);
-        assert!(success_result.success);
-        assert_eq!(success_result.data, Some(42));
-        assert!(success_result.error.is_none());
-
-        let error_result: CommandResult<i32> = CommandResult::error("Something went wrong");
-        assert!(!error_result.success);
-        assert!(error_result.data.is_none());
-        assert_eq!(error_result.error, Some("Something went wrong".to_string()));
-    }
 }

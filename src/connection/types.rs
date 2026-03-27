@@ -3,6 +3,7 @@
 //! Defines the core Connection trait and all associated types for the connection module.
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -89,7 +90,8 @@ impl std::fmt::Display for ConnectionType {
 }
 
 /// Connection status enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ConnectionStatus {
     Disconnected,
     Connecting,
@@ -126,7 +128,7 @@ pub enum ConnectionConfig {
 }
 
 /// Serial connection configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerialConfig {
     pub port: String,
     pub baud_rate: u32,
@@ -150,7 +152,7 @@ impl Default for SerialConfig {
 }
 
 /// Telnet connection configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelnetConfig {
     pub host: String,
     pub port: u16,
@@ -168,14 +170,16 @@ impl Default for TelnetConfig {
 }
 
 /// Data bits enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DataBits {
     Seven,
     Eight,
 }
 
 /// Parity enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Parity {
     None,
     Odd,
@@ -183,14 +187,16 @@ pub enum Parity {
 }
 
 /// Stop bits enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StopBits {
     One,
     Two,
 }
 
 /// Flow control enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FlowControl {
     None,
     Software,

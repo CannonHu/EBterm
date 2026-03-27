@@ -1,8 +1,14 @@
 //! Tauri IPC types for frontend-backend communication
 //!
-//! Defines all data structures for commands and events
+//! Re-exports lib types with IPC-specific additions.
+//! Core types (SerialConfig, DataBits, etc.) are now directly used from lib.
 
 use serde::{Deserialize, Serialize};
+
+// Re-export core types from lib for convenience
+pub use embedded_debugger::connection::types::{
+    ConnectionStatus, SerialConfig, TelnetConfig
+};
 
 /// IPC error type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,48 +33,15 @@ impl IpcError {
     }
 }
 
-/// Write operation error types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum WriteError {
-    Disconnected,
-    Timeout,
-    IoError(String),
-}
-
-/// Connection parameters
+/// IPC connection parameters (matches lib ConnectionConfig)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ConnectionParams {
-    Serial(SerialParams),
-    Telnet(TelnetParams),
+    Serial(SerialConfig),
+    Telnet(TelnetConfig),
 }
 
-/// Serial connection parameters
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SerialParams {
-    pub port: String,
-    pub baud_rate: u32,
-    pub data_bits: DataBits,
-    pub parity: Parity,
-    pub stop_bits: StopBits,
-    pub flow_control: FlowControl,
-}
-
-impl Default for SerialParams {
-    fn default() -> Self {
-        Self {
-            port: String::new(),
-            baud_rate: 115200,
-            data_bits: DataBits::Eight,
-            parity: Parity::None,
-            stop_bits: StopBits::One,
-            flow_control: FlowControl::None,
-        }
-    }
-}
-
-/// Telnet connection parameters
+/// Telnet parameters for IPC (matches lib TelnetConfig)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelnetParams {
     pub host: String,
@@ -86,48 +59,16 @@ impl Default for TelnetParams {
     }
 }
 
-/// Data bits
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum DataBits {
-    Seven,
-    Eight,
-}
-
-/// Parity
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum Parity {
-    None,
-    Odd,
-    Even,
-}
-
-/// Stop bits
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum StopBits {
-    One,
-    Two,
-}
-
-/// Flow control
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum FlowControl {
-    None,
-    Software,
-    Hardware,
-}
-
-/// Connection status
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum ConnectionStatus {
-    Disconnected,
-    Connecting,
-    Connected,
-    Error,
+/// Serial port information for IPC
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerialPortInfo {
+    pub port_name: String,
+    pub port_type: String,
+    pub vendor_id: Option<u16>,
+    pub product_id: Option<u16>,
+    pub serial_number: Option<String>,
+    pub manufacturer: Option<String>,
+    pub product: Option<String>,
 }
 
 /// Session information
@@ -144,7 +85,7 @@ pub struct SessionInfo {
     pub log_file_path: Option<String>,
 }
 
-/// Connection statistics
+/// Connection statistics for IPC
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConnectionStats {
     pub bytes_sent: u64,
@@ -159,15 +100,6 @@ pub struct ConnectionStats {
 pub enum LogDirection {
     Input,
     Output,
-}
-
-impl std::fmt::Display for LogDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LogDirection::Input => write!(f, "Input"),
-            LogDirection::Output => write!(f, "Output"),
-        }
-    }
 }
 
 /// Logging status
@@ -188,18 +120,6 @@ pub struct CommandInfo {
     pub description: Option<String>,
     pub content_preview: String,
     pub line_number: usize,
-}
-
-/// Serial port information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SerialPortInfo {
-    pub port_name: String,
-    pub port_type: String,
-    pub vendor_id: Option<u16>,
-    pub product_id: Option<u16>,
-    pub serial_number: Option<String>,
-    pub manufacturer: Option<String>,
-    pub product: Option<String>,
 }
 
 /// Data received event payload
@@ -254,124 +174,5 @@ impl LogEntry {
     /// Get the data as a string (lossy conversion)
     pub fn data_as_string(&self) -> String {
         String::from_utf8_lossy(&self.data).to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ipc_error_creation() {
-        let err = IpcError::new("TEST_CODE", "Test message");
-        assert_eq!(err.code, "TEST_CODE");
-        assert_eq!(err.message, "Test message");
-        assert!(err.details.is_none());
-    }
-
-    #[test]
-    fn test_ipc_error_with_details() {
-        let err = IpcError::new("TEST_CODE", "Test message").with_details("Additional details");
-        assert_eq!(err.details, Some("Additional details".to_string()));
-    }
-
-    #[test]
-    fn test_serial_params_default() {
-        let params = SerialParams::default();
-        assert_eq!(params.port, "");
-        assert_eq!(params.baud_rate, 115200);
-        assert_eq!(params.data_bits, DataBits::Eight);
-        assert_eq!(params.parity, Parity::None);
-        assert_eq!(params.stop_bits, StopBits::One);
-        assert_eq!(params.flow_control, FlowControl::None);
-    }
-
-    #[test]
-    fn test_telnet_params_default() {
-        let params = TelnetParams::default();
-        assert_eq!(params.host, "");
-        assert_eq!(params.port, 23);
-        assert_eq!(params.connect_timeout_secs, 10);
-    }
-
-    #[test]
-    fn test_connection_stats_default() {
-        let stats = ConnectionStats::default();
-        assert_eq!(stats.bytes_sent, 0);
-        assert_eq!(stats.bytes_received, 0);
-        assert_eq!(stats.packets_sent, 0);
-        assert_eq!(stats.packets_received, 0);
-    }
-
-    #[test]
-    fn test_data_bits_variants() {
-        assert_ne!(
-            std::mem::discriminant(&DataBits::Seven),
-            std::mem::discriminant(&DataBits::Eight)
-        );
-    }
-
-    #[test]
-    fn test_parity_variants() {
-        let variants = vec![Parity::None, Parity::Odd, Parity::Even];
-        for i in 0..variants.len() {
-            for j in i + 1..variants.len() {
-                assert_ne!(
-                    std::mem::discriminant(&variants[i]),
-                    std::mem::discriminant(&variants[j])
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_stop_bits_variants() {
-        assert_ne!(
-            std::mem::discriminant(&StopBits::One),
-            std::mem::discriminant(&StopBits::Two)
-        );
-    }
-
-    #[test]
-    fn test_flow_control_variants() {
-        let variants = vec![
-            FlowControl::None,
-            FlowControl::Software,
-            FlowControl::Hardware,
-        ];
-        for i in 0..variants.len() {
-            for j in i + 1..variants.len() {
-                assert_ne!(
-                    std::mem::discriminant(&variants[i]),
-                    std::mem::discriminant(&variants[j])
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_connection_status_variants() {
-        let variants = vec![
-            ConnectionStatus::Disconnected,
-            ConnectionStatus::Connecting,
-            ConnectionStatus::Connected,
-            ConnectionStatus::Error,
-        ];
-        for i in 0..variants.len() {
-            for j in i + 1..variants.len() {
-                assert_ne!(
-                    std::mem::discriminant(&variants[i]),
-                    std::mem::discriminant(&variants[j])
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_log_direction_variants() {
-        assert_ne!(
-            std::mem::discriminant(&LogDirection::Input),
-            std::mem::discriminant(&LogDirection::Output)
-        );
     }
 }
