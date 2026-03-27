@@ -62,7 +62,16 @@ pub async fn connect(
     let manager = state.connection_manager.read().await;
 
     match manager.create_connection(connection_name, connection_config).await {
-        Ok(connection_id) => ok(connection_id),
+        Ok(connection_id) => {
+            // Start data streaming for this connection
+            if let Some(connection_handle) = manager.get_connection_handle(&connection_id).await {
+                state.data_streamer_manager.start_streaming(
+                    connection_id.clone(),
+                    connection_handle,
+                ).await;
+            }
+            ok(connection_id)
+        }
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }
 }
@@ -72,6 +81,9 @@ pub async fn disconnect(
     state: tauri::State<'_, AppState>,
     connection_id: String,
 ) -> CommandResponse<()> {
+    // Stop data streaming first
+    state.data_streamer_manager.stop_streaming(&connection_id).await;
+
     let manager = state.connection_manager.read().await;
 
     match manager.disconnect(&connection_id).await {

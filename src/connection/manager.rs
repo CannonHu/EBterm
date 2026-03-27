@@ -270,6 +270,11 @@ impl ConnectionManager {
 
         Ok(())
     }
+
+    pub async fn get_connection_handle(&self, connection_id: &str) -> Option<Arc<Mutex<Box<dyn super::Connection>>>> {
+        let connections = self.connections.read().await;
+        connections.get(connection_id).map(|entry| entry.connection.clone())
+    }
 }
 
 impl Default for ConnectionManager {
