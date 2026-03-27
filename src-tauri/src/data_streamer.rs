@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tokio::time::timeout;
-use tauri::Manager;
+use tauri::Emitter;
 
 use embedded_debugger::connection::ConnectionHandle;
 
@@ -166,7 +166,7 @@ async fn send_batch(app: &tauri::AppHandle, connection_id: &str, data: &[u8]) {
         data: data.to_vec(),
     };
 
-    let _ = app.emit_all("data_received", event);
+    let _ = app.emit("data_received", event);
 }
 
 #[cfg(test)]
