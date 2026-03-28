@@ -1,13 +1,8 @@
-//! Simplified data streaming module for Tauri integration
+//! Data streaming functions for connection context
 //!
-//! Manages background read loops for connected connections using time-window batching.
-//! This implementation uses tokio::time::timeout to enforce a 16ms batching window,
-//! ensuring data is sent in batches rather than byte-by-byte.
+//! Provides background read loops for connected connections using time-window batching.
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
 use tokio::time::timeout;
 use tauri::Emitter;
 
@@ -19,89 +14,11 @@ const BATCH_INTERVAL_MS: u64 = 16;
 const MAX_BATCH_SIZE: usize = 16384;
 const READ_BUFFER_SIZE: usize = 4096;
 
-pub struct DataStreamerManager {
-    app: tauri::AppHandle,
-    streamers: Arc<Mutex<HashMap<String, tokio::task::JoinHandle<()>>>>,
-}
-
-impl DataStreamerManager {
-    pub fn new(app: tauri::AppHandle) -> Self {
-        Self {
-            app,
-            streamers: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-
-    pub async fn start_streaming(
-        &self,
-        connection_id: String,
-        connection: ConnectionHandle,
-    ) {
-        let mut streamers = self.streamers.lock().await;
-
-        if streamers.contains_key(&connection_id) {
-            tracing::warn!(
-                connection_id = %connection_id,
-                "Data streamer already exists for connection"
-            );
-            return;
-        }
-
-        let app = self.app.clone();
-        let connection_id_clone = connection_id.clone();
-
-        let handle = tokio::spawn(async move {
-            start_batch_streamer(connection_id_clone, connection, app).await;
-        });
-
-        streamers.insert(connection_id.clone(), handle);
-
-        tracing::info!(
-            connection_id = %connection_id,
-            "Data streamer started"
-        );
-    }
-
-    pub async fn stop_streaming(&self, connection_id: &str) {
-        let mut streamers = self.streamers.lock().await;
-
-        if let Some(handle) = streamers.remove(connection_id) {
-            handle.abort();
-            tracing::info!(
-                connection_id = %connection_id,
-                "Data streamer stopped"
-            );
-        } else {
-            tracing::warn!(
-                connection_id = %connection_id,
-                "No data streamer found for connection"
-            );
-        }
-    }
-
-    pub async fn stop_all(&self) {
-        let mut streamers = self.streamers.lock().await;
-        for (connection_id, handle) in streamers.drain() {
-            handle.abort();
-            tracing::info!(
-                connection_id = %connection_id,
-                "Data streamer stopped"
-            );
-        }
-    }
-
-    pub async fn active_count(&self) -> usize {
-        self.streamers.lock().await.len()
-    }
-}
-
-impl std::fmt::Debug for DataStreamerManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DataStreamerManager").finish()
-    }
-}
-
-async fn start_batch_streamer(
+/// Start a background batch streamer for a connection
+///
+/// This function runs in a tokio task and reads data from connection
+/// in batches, emitting events to frontend every ~16ms.
+pub async fn start_batch_streamer(
     connection_id: String,
     connection: ConnectionHandle,
     app: tauri::AppHandle,
@@ -174,7 +91,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_batch_constants() {
+    fn test_batch() {
         assert_eq!(BATCH_INTERVAL_MS, 16);
         assert_eq!(MAX_BATCH_SIZE, 16384);
         assert_eq!(READ_BUFFER_SIZE, 4096);

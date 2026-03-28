@@ -1,22 +1,17 @@
 //! Tauri application entry point for embedded-debugger
 
+mod connection_context;
 mod commands;
 mod data_streamer;
 mod ipc;
 mod state;
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use tauri::Manager;
 
 use commands::command::*;
 use commands::connection::*;
 use commands::logging::*;
 use state::AppState;
-
-use embedded_debugger::command::manager::DefaultCommandManager;
-use embedded_debugger::command::parser::DefaultCommandParser;
-use embedded_debugger::connection::ConnectionManager;
 
 fn main() {
     tauri::Builder::default()
@@ -25,20 +20,7 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let app_handle = app.handle();
-
-            let data_streamer_manager = Arc::new(data_streamer::DataStreamerManager::new(app_handle.clone()));
-            let parser = Box::new(DefaultCommandParser::default());
-            let command_manager = Arc::new(RwLock::new(DefaultCommandManager::new(parser)));
-            let connection_manager = Arc::new(RwLock::new(ConnectionManager::new()));
-            let loggers = Arc::new(RwLock::new(std::collections::HashMap::new()));
-
-            app.manage(AppState {
-                connection_manager,
-                command_manager,
-                loggers,
-                data_streamer_manager,
-            });
-
+            app.manage(AppState::new(app_handle.clone()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

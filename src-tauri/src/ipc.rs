@@ -1,13 +1,13 @@
 //! Tauri IPC types for frontend-backend communication
 //!
-//! Re-exports lib types with IPC-specific additions.
+//!//! Re-exports lib types with IPC-specific additions.
 //! Core types (SerialConfig, DataBits, etc.) are now directly used from lib.
 
 use serde::{Deserialize, Serialize};
 
 // Re-export core types from lib for convenience
 pub use embedded_debugger::connection::types::{
-    ConnectionStatus, SerialConfig, TelnetConfig
+    ConnectionStatus, SerialConfig, TelnetConfig, DataBits, Parity, StopBits, FlowControl,
 };
 
 /// IPC error type
@@ -41,24 +41,6 @@ pub enum ConnectionParams {
     Telnet(TelnetConfig),
 }
 
-/// Telnet parameters for IPC (matches lib TelnetConfig)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TelnetParams {
-    pub host: String,
-    pub port: u16,
-    pub connect_timeout_secs: u64,
-}
-
-impl Default for TelnetParams {
-    fn default() -> Self {
-        Self {
-            host: String::new(),
-            port: 23,
-            connect_timeout_secs: 10,
-        }
-    }
-}
-
 /// Serial port information for IPC
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerialPortInfo {
@@ -69,20 +51,6 @@ pub struct SerialPortInfo {
     pub serial_number: Option<String>,
     pub manufacturer: Option<String>,
     pub product: Option<String>,
-}
-
-/// Session information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionInfo {
-    pub id: String,
-    pub name: String,
-    pub connection_type: String,
-    pub status: ConnectionStatus,
-    pub created_at: String,
-    pub last_activity: Option<String>,
-    pub stats: ConnectionStats,
-    pub logging_enabled: bool,
-    pub log_file_path: Option<String>,
 }
 
 /// Connection statistics for IPC
@@ -141,38 +109,4 @@ pub struct StatusChangedEvent {
 pub struct ErrorOccurredEvent {
     pub connection_id: String,
     pub error: IpcError,
-}
-
-/// Log entry for IPC communication
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogEntry {
-    pub timestamp: u64,
-    pub session_id: String,
-    pub direction: LogDirection,
-    pub data: Vec<u8>,
-}
-
-impl LogEntry {
-    /// Create a new log entry
-    pub fn new(session_id: impl Into<String>, direction: LogDirection, data: Vec<u8>) -> Self {
-        Self {
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
-            session_id: session_id.into(),
-            direction,
-            data,
-        }
-    }
-
-    /// Get the data as a hex string
-    pub fn data_as_hex(&self) -> String {
-        self.data.iter().map(|b| format!("{:02x}", b)).collect()
-    }
-
-    /// Get the data as a string (lossy conversion)
-    pub fn data_as_string(&self) -> String {
-        String::from_utf8_lossy(&self.data).to_string()
-    }
 }

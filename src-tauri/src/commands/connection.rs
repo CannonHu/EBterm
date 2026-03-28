@@ -29,25 +29,14 @@ pub async fn list_serial_ports() -> CommandResponse<Vec<SerialPortInfo>> {
     }
 }
 
-/// Convert IPC params to lib config - NOW DIRECT MAPPING!
-/// (Types are identical, just pass through)
-fn convert_connection_params(params: ConnectionParams) -> (embedded_debugger::connection::types::ConnectionType, embedded_debugger::connection::types::ConnectionConfig, String) {
+/// Convert IPC params to lib config
+fn convert_connection_params(params: ConnectionParams) -> embedded_debugger::connection::types::ConnectionConfig {
     match params {
         ConnectionParams::Serial(serial_params) => {
-            let name = serial_params.port.clone();
-            (
-                embedded_debugger::connection::types::ConnectionType::Serial,
-                embedded_debugger::connection::types::ConnectionConfig::Serial(serial_params),
-                name,
-            )
+            embedded_debugger::connection::types::ConnectionConfig::Serial(serial_params)
         }
         ConnectionParams::Telnet(telnet_params) => {
-            let name = format!("{}:{}", telnet_params.host, telnet_params.port);
-            (
-                embedded_debugger::connection::types::ConnectionType::Telnet,
-                embedded_debugger::connection::types::ConnectionConfig::Telnet(telnet_params),
-                name,
-            )
+            embedded_debugger::connection::types::ConnectionConfig::Telnet(telnet_params)
         }
     }
 }
@@ -55,25 +44,42 @@ fn convert_connection_params(params: ConnectionParams) -> (embedded_debugger::co
 #[tauri::command]
 pub async fn connect(
     state: tauri::State<'_, AppState>,
+    app: tauri::AppHandle,
     params: ConnectionParams,
 ) -> CommandResponse<String> {
-    let (_, connection_config, connection_name) = convert_connection_params(params);
+    let connection_config = convert_connection_params(params);
 
-    let manager = state.connection_manager.read().await;
+    // Clone config for creating context
+    let config_clone = connection_config.clone();
 
-    match manager.create_connection(connection_name, connection_config).await {
-        Ok(connection_id) => {
-            // Start data streaming for this connection
-            if let Some(connection_handle) = manager.get_connection_handle(&connection_id).await {
-                state.data_streamer_manager.start_streaming(
-                    connection_id.clone(),
-                    connection_handle,
-                ).await;
-            }
-            ok(connection_id)
+    // Create connection handle using factory
+    let handle = match connection_config {
+        embedded_debugger::connection::types::ConnectionConfig::Serial(serial_config) => {
+            embedded_debugger::connection::types::ConnectionFactory::create_serial(serial_config)
         }
-        Err(e) => err(format!("{}: {}", e.code(), e)),
+        embedded_debugger::connection::types::ConnectionConfig::Telnet(telnet_config) => {
+            embedded_debugger::connection::types::ConnectionFactory::create_telnet(telnet_config)
+        }
+    };
+
+    let handle: embedded_debugger::connection::ConnectionHandle =
+        std::sync::Arc::new(tokio::sync::Mutex::new(handle));
+
+    let connection_id = uuid::Uuid::new_v4().to_string();
+
+    // Create and store connection context
+    let mut ctx = crate::connection_context::ConnectionContext::new(handle, config_clone);
+
+    // Start data streaming
+    ctx.start_data_streaming(app.clone(), connection_id.clone());
+
+    // Store in connections map
+    {
+        let mut connections = state.connections.write().await;
+        connections.insert(connection_id.clone(), ctx);
     }
+
+    ok(connection_id)
 }
 
 #[tauri::command]
@@ -81,13 +87,24 @@ pub async fn disconnect(
     state: tauri::State<'_, AppState>,
     connection_id: String,
 ) -> CommandResponse<()> {
-    // Stop data streaming first
-    state.data_streamer_manager.stop_streaming(&connection_id).await;
+    let mut connections = state.connections.write().await;
 
-    let manager = state.connection_manager.read().await;
+    let ctx = match connections.get_mut(&connection_id) {
+        Some(ctx) => ctx,
+        None => return err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id)),
+    };
 
-    match manager.disconnect(&connection_id).await {
-        Ok(_) => ok(()),
+    // Stop data streaming
+    ctx.stop_data_streaming();
+
+    // Disconnect and remove from map
+    let mut conn = ctx.handle.lock().await;
+    match conn.disconnect().await {
+        Ok(_) => {
+            drop(conn);
+            connections.remove(&connection_id);
+            ok(())
+        }
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }
 }
@@ -97,17 +114,12 @@ pub async fn get_connection_status(
     state: tauri::State<'_, AppState>,
     connection_id: String,
 ) -> CommandResponse<embedded_debugger::connection::types::ConnectionStatus> {
-    let manager = state.connection_manager.read().await;
+    let connections = state.connections.read().await;
 
-    match manager.get_connection(&connection_id).await {
-        Some(connection_info) => {
-            let status = match connection_info.status.as_str() {
-                "Disconnected" => embedded_debugger::connection::types::ConnectionStatus::Disconnected,
-                "Connecting" => embedded_debugger::connection::types::ConnectionStatus::Connecting,
-                "Connected" => embedded_debugger::connection::types::ConnectionStatus::Connected,
-                "Error" => embedded_debugger::connection::types::ConnectionStatus::Error,
-                _ => embedded_debugger::connection::types::ConnectionStatus::Disconnected,
-            };
+    match connections.get(&connection_id) {
+        Some(ctx) => {
+            let conn = ctx.handle.lock().await;
+            let status = conn.status();
             ok(status)
         }
         None => err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id)),
@@ -120,9 +132,20 @@ pub async fn write_data(
     connection_id: String,
     data: Vec<u8>,
 ) -> CommandResponse<()> {
-    let manager = state.connection_manager.read().await;
+    let connections = state.connections.read().await;
 
-    match manager.write(&connection_id, data).await {
+    let ctx = match connections.get(&connection_id) {
+        Some(ctx) => ctx,
+        None => return err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id)),
+    };
+
+    let mut conn = ctx.handle.lock().await;
+
+    if !conn.is_connected() {
+        return err("CONNECTION_NOT_CONNECTED: Connection is not connected".to_string());
+    }
+
+    match conn.write(&data).await {
         Ok(_) => ok(()),
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }

@@ -1,18 +1,14 @@
 //! Connection module for embedded debugger
 //!
-//! Manages serial port and Telnet connections to embedded boards
+//! Provides connection factory and types for serial port and Telnet connections
 
 use thiserror::Error;
 
-pub mod manager;
-pub mod registry;
 pub mod types;
 pub mod serial;
 pub mod telnet;
 pub mod discovery;
 
-pub use self::manager::{ConnectionManager, ConnectionInfo, ConnectionManagerStats};
-pub use self::registry::ConnectionRegistry;
 pub use self::types::{
     Connection, ConnectionConfig, ConnectionFactory, ConnectionStats, ConnectionStatus,
     ConnectionType, DataBits, FlowControl, Parity, SerialConfig, StopBits, TelnetConfig,

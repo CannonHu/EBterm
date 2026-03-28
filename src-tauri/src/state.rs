@@ -8,32 +8,26 @@ use tokio::sync::RwLock;
 
 use embedded_debugger::command::manager::DefaultCommandManager;
 use embedded_debugger::command::parser::DefaultCommandParser;
-use embedded_debugger::connection::ConnectionManager;
-use embedded_debugger::logger::FileLogger;
 
-use crate::data_streamer::DataStreamerManager;
+use crate::connection_context::ConnectionContext;
 
+/// Application state with consolidated connection management
 pub struct AppState {
-    pub connection_manager: Arc<RwLock<ConnectionManager>>,
+    /// All connections: id → consolidated context
+    pub connections: Arc<RwLock<HashMap<String, ConnectionContext>>>,
+
+    /// Command management
     pub command_manager: Arc<RwLock<DefaultCommandManager>>,
-    pub loggers: Arc<RwLock<HashMap<String, FileLogger>>>,
-    pub data_streamer_manager: Arc<DataStreamerManager>,
 }
 
 impl AppState {
-    pub fn new(app: tauri::AppHandle) -> Self {
-        let data_streamer_manager = Arc::new(DataStreamerManager::new(app));
-
-        let connection_manager = Arc::new(RwLock::new(ConnectionManager::new()));
-
+    pub fn new(_app: tauri::AppHandle) -> Self {
         let parser = Box::new(DefaultCommandParser::default());
         let command_manager = Arc::new(RwLock::new(DefaultCommandManager::new(parser)));
 
         Self {
-            connection_manager,
+            connections: Arc::new(RwLock::new(HashMap::new())),
             command_manager,
-            loggers: Arc::new(RwLock::new(HashMap::new())),
-            data_streamer_manager,
         }
     }
 }
