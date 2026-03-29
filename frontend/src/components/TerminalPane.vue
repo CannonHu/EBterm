@@ -70,6 +70,7 @@ function openConfig() {
 function closeConfig() {
   if (!currentTab.value) return
   terminalStore.closeConfigPanel(currentTab.value.id)
+  // Note: blur() is already called in ConfigPanel.closePanel()
 }
 
 function closeSearch() {
@@ -152,6 +153,13 @@ onUnmounted(() => {
   }
 })
 
+watch(
+  () => isConfigPanelOpen.value,
+  (isOpen) => {
+    console.log('[TerminalPane] isConfigPanelOpen changed:', isOpen)
+  }
+)
+
 defineExpose({
   write: writeToTerminal,
   clear: clearTerminal,
@@ -170,7 +178,11 @@ defineExpose({
         </svg>
         <h3>Not Connected</h3>
         <p>Connect to a device to start your session</p>
-        <NButton type="primary" size="large" @click="openConfig">
+        <NButton
+          type="primary"
+          size="large"
+          @click="openConfig"
+        >
           Connect to Device
         </NButton>
       </div>

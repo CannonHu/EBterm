@@ -26,12 +26,14 @@ export interface SerialParams {
   parity: Parity;
   stop_bits: StopBits;
   flow_control: FlowControl;
+  name: string;
 }
 
 export interface TelnetParams {
   host: string;
   port: number;
   connect_timeout_secs: number;
+  name: string;
 }
 
 export type ConnectionParams =

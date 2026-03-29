@@ -57,6 +57,9 @@ const isSaveDialogVisible = ref(false)
 // Connection type
 const connectionType = ref<'serial' | 'telnet'>('serial')
 
+// Connection name
+const connectionName = ref<string>('')
+
 // Serial port list
 const serialPorts = ref<SerialPortInfo[]>([])
 const isLoadingPorts = ref(false)
@@ -154,11 +157,20 @@ function validateForm(): boolean {
 async function handleConnect() {
   if (!validateForm()) return
 
+  // Calculate tab title before building params (user input or auto-generated)
+  let tabTitle = ''
+  if (connectionType.value === 'serial') {
+    tabTitle = connectionName.value || serialForm.value.port
+  } else {
+    tabTitle = connectionName.value || `${telnetForm.value.host}:${telnetForm.value.port}`
+  }
+
+  // Build params with name always present
   let params: ConnectionParams
   if (connectionType.value === 'serial') {
-    params = { type: 'serial', ...serialForm.value }
+    params = { type: 'serial', ...serialForm.value, name: tabTitle }
   } else {
-    params = { type: 'telnet', ...telnetForm.value }
+    params = { type: 'telnet', ...telnetForm.value, name: tabTitle }
   }
 
   try {
@@ -172,6 +184,9 @@ async function handleConnect() {
     const newSessionId = currentTab?.sessionId
 
     if (connectionStore.isConnected && newSessionId && newSessionId !== previousSessionId) {
+      // Set tab title directly (name is always present)
+      sessionStore.renameTab(props.tabId, tabTitle)
+
       message.success('Connected successfully')
       emit('connected', newSessionId)
       closePanel()
@@ -201,6 +216,8 @@ async function handleDisconnect() {
 
 // Close panel
 function closePanel() {
+  // Remove focus before closing to prevent button staying in focused state
+  document.activeElement?.blur()
   emit('update:visible', false)
 }
 
@@ -305,17 +322,27 @@ onMounted(() => {
     placement="top"
     :height="320"
     :mask-closable="!isConnecting"
-    @update:show="(val) => emit('update:visible', val)"
+    :trap-focus="false"
   >
     <NDrawerContent title="Connection Configuration" closable @close="closePanel">
       <NForm label-placement="left" label-width="120" :disabled="isConnecting">
-        <!-- Connection Type -->
-        <NFormItem label="Type">
-          <NRadioGroup v-model:value="connectionType">
-            <NRadioButton value="serial">Serial</NRadioButton>
-            <NRadioButton value="telnet">Telnet</NRadioButton>
-          </NRadioGroup>
-        </NFormItem>
+        <!-- Connection Type and Name -->
+        <div class="type-name-grid">
+          <NFormItem label="Type">
+            <NRadioGroup v-model:value="connectionType">
+              <NRadioButton value="serial">Serial</NRadioButton>
+              <NRadioButton value="telnet">Telnet</NRadioButton>
+            </NRadioGroup>
+          </NFormItem>
+
+          <NFormItem label="Name">
+            <NInput
+              v-model:value="connectionName"
+              placeholder="e.g. My Device"
+              clearable
+            />
+          </NFormItem>
+        </div>
 
         <!-- Serial Configuration -->
         <template v-if="connectionType === 'serial'">
@@ -432,6 +459,12 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.type-name-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 24px;
+}
+
 .serial-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
