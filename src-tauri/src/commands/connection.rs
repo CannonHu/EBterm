@@ -48,8 +48,6 @@ pub async fn connect(
     params: ConnectionParams,
 ) -> CommandResponse<String> {
     let connection_config = convert_connection_params(params);
-
-    // Clone config for creating context
     let config_clone = connection_config.clone();
 
     // Create connection handle using factory
@@ -65,12 +63,22 @@ pub async fn connect(
     let handle: embedded_debugger::connection::ConnectionHandle =
         std::sync::Arc::new(tokio::sync::Mutex::new(handle));
 
+    // Connect to the target
+    {
+        let mut conn = handle.lock().await;
+        match conn.connect().await {
+            Ok(_) => {}
+            Err(e) => {
+                tracing::error!("Connection failed: {} - {}", e.code(), e);
+                return err(format!("{}: {}", e.code(), e));
+            }
+        }
+    }
+
     let connection_id = uuid::Uuid::new_v4().to_string();
 
-    // Create and store connection context
+    // Create connection context and start streaming
     let mut ctx = crate::connection_context::ConnectionContext::new(handle, config_clone);
-
-    // Start data streaming
     ctx.start_data_streaming(app.clone(), connection_id.clone());
 
     // Store in connections map
@@ -85,8 +93,10 @@ pub async fn connect(
 #[tauri::command]
 pub async fn disconnect(
     state: tauri::State<'_, AppState>,
-    connection_id: String,
+    params: crate::ipc::DisconnectParams,
 ) -> CommandResponse<()> {
+    let crate::ipc::DisconnectParams { connection_id } = params;
+
     let mut connections = state.connections.write().await;
 
     let ctx = match connections.get_mut(&connection_id) {
@@ -112,8 +122,10 @@ pub async fn disconnect(
 #[tauri::command]
 pub async fn get_connection_status(
     state: tauri::State<'_, AppState>,
-    connection_id: String,
+    params: crate::ipc::GetConnectionStatusParams,
 ) -> CommandResponse<embedded_debugger::connection::types::ConnectionStatus> {
+    let crate::ipc::GetConnectionStatusParams { connection_id } = params;
+
     let connections = state.connections.read().await;
 
     match connections.get(&connection_id) {
@@ -127,16 +139,20 @@ pub async fn get_connection_status(
 }
 
 #[tauri::command]
-pub async fn write_data(
+pub async fn write_text(
     state: tauri::State<'_, AppState>,
-    connection_id: String,
-    data: Vec<u8>,
+    params: crate::ipc::WriteTextParams,
 ) -> CommandResponse<()> {
+    let crate::ipc::WriteTextParams { connection_id, text } = params;
+    let data = text.into_bytes();
+
     let connections = state.connections.read().await;
 
     let ctx = match connections.get(&connection_id) {
         Some(ctx) => ctx,
-        None => return err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id)),
+        None => {
+            return err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id));
+        }
     };
 
     let mut conn = ctx.handle.lock().await;
@@ -149,13 +165,4 @@ pub async fn write_data(
         Ok(_) => ok(()),
         Err(e) => err(format!("{}: {}", e.code(), e)),
     }
-}
-
-#[tauri::command]
-pub async fn write_text(
-    state: tauri::State<'_, AppState>,
-    connection_id: String,
-    text: String,
-) -> CommandResponse<()> {
-    write_data(state, connection_id, text.into_bytes()).await
 }

@@ -7,131 +7,172 @@ import { useSessionStore } from './session';
 export const useConnectionStore = defineStore('connection', () => {
   const sessionStore = useSessionStore();
 
-  const sessionStatuses = ref<Map<string, ConnectionStatus>>(new Map());
-  const sessionConfigs = ref<Map<string, ConnectionParams>>(new Map());
-  const sessionStats = ref<Map<string, ConnectionStats>>(new Map());
-  const sessionErrors = ref<Map<string, string>>(new Map());
+  // Map sessionId to tabId for reverse lookup
+  const sessionIdToTabId = ref<Map<string, string>>(new Map());
+
+  // Store connection state by tabId
+  const tabStatuses = ref<Map<string, ConnectionStatus>>(new Map());
+  const tabConfigs = ref<Map<string, ConnectionParams>>(new Map());
+  const tabStats = ref<Map<string, ConnectionStats>>(new Map());
+  const tabErrors = ref<Map<string, string>>(new Map());
 
   const status = computed(() => {
-    const activeId = sessionStore.activeTab?.sessionId;
-    return activeId ? sessionStatuses.value.get(activeId) ?? 'disconnected' : 'disconnected';
+    const activeTabId = sessionStore.activeTabId;
+    return activeTabId ? tabStatuses.value.get(activeTabId) ?? 'disconnected' : 'disconnected';
   });
 
   const config = computed(() => {
-    const activeId = sessionStore.activeTab?.sessionId;
-    if (!activeId) return null;
-    return sessionConfigs.value.get(activeId) ?? null;
+    const activeTabId = sessionStore.activeTabId;
+    if (!activeTabId) return null;
+    return tabConfigs.value.get(activeTabId) ?? null;
   });
 
   const stats = computed(() => {
-    const activeId = sessionStore.activeTab?.sessionId;
+    const activeTabId = sessionStore.activeTabId;
     const defaultStats: ConnectionStats = { bytes_sent: 0, bytes_received: 0, packets_sent: 0, packets_received: 0 };
-    return activeId ? sessionStats.value.get(activeId) ?? defaultStats : defaultStats;
+    return activeTabId ? tabStats.value.get(activeTabId) ?? defaultStats : defaultStats;
   });
 
   const error = computed(() => {
-    const activeId = sessionStore.activeTab?.sessionId;
-    return activeId ? sessionErrors.value.get(activeId) ?? null : null;
+    const activeTabId = sessionStore.activeTabId;
+    return activeTabId ? tabErrors.value.get(activeTabId) ?? null : null;
   });
 
   const isConnected = computed(() => status.value === 'connected');
   const isConnecting = computed(() => status.value === 'connecting');
   const hasError = computed(() => status.value === 'error');
 
-  function getSessionStatus(sessionId: string): ConnectionStatus {
-    return sessionStatuses.value.get(sessionId) ?? 'disconnected';
+  function getTabStatus(tabId: string): ConnectionStatus {
+    return tabStatuses.value.get(tabId) ?? 'disconnected';
   }
 
-  function getSessionConfig(sessionId: string): ConnectionParams | undefined {
-    return sessionConfigs.value.get(sessionId);
+  function getTabConfig(tabId: string): ConnectionParams | undefined {
+    return tabConfigs.value.get(tabId);
   }
 
-  function getSessionStats(sessionId: string): ConnectionStats {
+  function getTabStats(tabId: string): ConnectionStats {
     const defaultStats: ConnectionStats = { bytes_sent: 0, bytes_received: 0, packets_sent: 0, packets_received: 0 };
-    return sessionStats.value.get(sessionId) ?? defaultStats;
+    return tabStats.value.get(tabId) ?? defaultStats;
   }
 
-  function getSessionError(sessionId: string): string | null {
-    return sessionErrors.value.get(sessionId) ?? null;
+  function getTabError(tabId: string): string | null {
+    return tabErrors.value.get(tabId) ?? null;
   }
 
-  function setSessionStatus(sessionId: string, status: ConnectionStatus): void {
-    sessionStatuses.value.set(sessionId, status);
+  function setTabStatus(tabId: string, status: ConnectionStatus): void {
+    tabStatuses.value.set(tabId, status);
   }
 
-  function setSessionStats(sessionId: string, stats: ConnectionStats): void {
-    sessionStats.value.set(sessionId, stats);
+  function setTabStats(tabId: string, stats: ConnectionStats): void {
+    tabStats.value.set(tabId, stats);
   }
 
-  function setSessionError(sessionId: string, error: string | null): void {
+  function setTabError(tabId: string, error: string | null): void {
     if (error) {
-      sessionErrors.value.set(sessionId, error);
+      tabErrors.value.set(tabId, error);
     } else {
-      sessionErrors.value.delete(sessionId);
+      tabErrors.value.delete(tabId);
     }
   }
 
-  function removeSession(sessionId: string): void {
-    sessionStatuses.value.delete(sessionId);
-    sessionConfigs.value.delete(sessionId);
-    sessionStats.value.delete(sessionId);
-    sessionErrors.value.delete(sessionId);
+  function removeTab(tabId: string): void {
+    const tab = sessionStore.tabs.find(t => t.id === tabId);
+    const sessionId = tab?.sessionId;
+    if (sessionId) {
+      sessionIdToTabId.value.delete(sessionId);
+    }
+    tabStatuses.value.delete(tabId);
+    tabConfigs.value.delete(tabId);
+    tabStats.value.delete(tabId);
+    tabErrors.value.delete(tabId);
   }
 
-  async function connect(params: ConnectionParams, sessionId?: string) {
-    if (!sessionId) return;
+  async function connect(params: ConnectionParams, tabId?: string) {
+    if (!tabId) return;
 
-    sessionErrors.value.delete(sessionId);
-    sessionStatuses.value.set(sessionId, 'connecting');
-    sessionConfigs.value.set(sessionId, params);
+    tabErrors.value.delete(tabId);
+    tabStatuses.value.set(tabId, 'connecting');
+    tabConfigs.value.set(tabId, params);
 
     const result = await tauriInvoke<string>('connect', { params });
+
     if (result.success && result.data) {
-      sessionStatuses.value.set(sessionId, 'connected');
-      const sessionStore = useSessionStore();
-      sessionStore.connectTab(sessionId, result.data);
+      const sessionId = result.data.data || result.data;
+      tabStatuses.value.set(tabId, 'connected');
+      sessionIdToTabId.value.set(sessionId, tabId);
+      sessionStore.connectTab(tabId, sessionId);
     } else {
-      sessionStatuses.value.set(sessionId, 'error');
-      sessionErrors.value.set(sessionId, result.error || 'Connection failed');
+      tabStatuses.value.set(tabId, 'error');
+      tabErrors.value.set(tabId, result.error || 'Connection failed');
     }
   }
 
-  async function disconnect(sessionId?: string) {
+  async function disconnect(tabId?: string) {
+    if (!tabId) return;
+
+    const tab = sessionStore.tabs.find(t => t.id === tabId);
+    const sessionId = tab?.sessionId;
     if (!sessionId) return;
 
-    sessionErrors.value.delete(sessionId);
-    const result = await tauriInvoke<void>('disconnect', { sessionId });
+    tabErrors.value.delete(tabId);
+    const result = await tauriInvoke<void>('disconnect', { connectionId: sessionId });
     if (result.success) {
-      sessionStatuses.value.set(sessionId, 'disconnected');
-      sessionConfigs.value.delete(sessionId);
-      sessionStats.value.delete(sessionId);
+      tabStatuses.value.set(tabId, 'disconnected');
+      tabConfigs.value.delete(tabId);
+      tabStats.value.delete(tabId);
+      sessionIdToTabId.value.delete(sessionId);
     } else {
-      sessionStatuses.value.set(sessionId, 'error');
-      sessionErrors.value.set(sessionId, result.error || 'Disconnect failed');
+      tabStatuses.value.set(tabId, 'error');
+      tabErrors.value.set(tabId, result.error || 'Disconnect failed');
     }
   }
 
   async function getStatus(sessionId?: string) {
     if (!sessionId) return;
-    const result = await tauriInvoke<ConnectionStatus>('get_connection_status', { sessionId });
+    const result = await tauriInvoke<ConnectionStatus>('get_connection_status', { params: { connection_id: sessionId } });
     if (result.success && result.data) {
-      sessionStatuses.value.set(sessionId, result.data);
+      const tabId = sessionIdToTabId.value.get(sessionId);
+      if (tabId) {
+        tabStatuses.value.set(tabId, result.data);
+      }
     }
   }
 
-  async function writeData(sessionId: string, data: number[]) {
-    return await tauriInvoke<void>('write_data', { sessionId, data });
+  async function writeText(sessionId: string, text: string) {
+    return await tauriInvoke<void>('write_text', { params: { connection_id: sessionId, text } });
   }
 
-  async function writeText(sessionId: string, text: string) {
-    return await tauriInvoke<void>('write_text', { sessionId, text });
+  // Methods that work with sessionId instead of tabId (for event handlers)
+  function setSessionStatus(sessionId: string, status: ConnectionStatus): void {
+    const tabId = sessionIdToTabId.value.get(sessionId);
+    if (tabId) {
+      tabStatuses.value.set(tabId, status);
+    }
+  }
+
+  function setSessionError(sessionId: string, error: string | null): void {
+    const tabId = sessionIdToTabId.value.get(sessionId);
+    if (tabId) {
+      if (error) {
+        tabErrors.value.set(tabId, error);
+      } else {
+        tabErrors.value.delete(tabId);
+      }
+    }
+  }
+
+  function removeSession(sessionId: string): void {
+    const tabId = sessionIdToTabId.value.get(sessionId);
+    if (tabId) {
+      removeTab(tabId);
+    }
   }
 
   return {
-    sessionStatuses,
-    sessionConfigs,
-    sessionStats,
-    sessionErrors,
+    tabStatuses,
+    tabConfigs,
+    tabStats,
+    tabErrors,
     status,
     config,
     stats,
@@ -139,18 +180,20 @@ export const useConnectionStore = defineStore('connection', () => {
     isConnected,
     isConnecting,
     hasError,
-    getSessionStatus,
-    getSessionConfig,
-    getSessionStats,
-    getSessionError,
+    getTabStatus,
+    getTabConfig,
+    getTabStats,
+    getTabError,
+    setTabStatus,
+    setTabStats,
+    setTabError,
+    removeTab,
     setSessionStatus,
-    setSessionStats,
     setSessionError,
     removeSession,
     connect,
     disconnect,
     getStatus,
-    writeData,
     writeText
   };
 });

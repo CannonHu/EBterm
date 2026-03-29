@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.embedded-debugger.app",
   "build": {
-    "beforeDevCommand": "cd ../frontend && bun run dev",
-    "beforeBuildCommand": "cd ../frontend && bun run build",
+    "beforeDevCommand": "cd /Users/spg/Workspace/Playground/toy_term/frontend && bun run dev",
+    "beforeBuildCommand": "cd /Users/spg/Workspace/Playground/toy_term/frontend && bun run build",
     "frontendDist": "../frontend/dist",
     "devUrl": "http://localhost:1420"
   },

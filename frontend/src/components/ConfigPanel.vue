@@ -14,6 +14,7 @@ import {
   useMessage
 } from 'naive-ui'
 import { useConnectionStore } from '../stores/connection'
+import { useSessionStore } from '../stores/session'
 import { tauriInvoke } from '../api/tauri'
 import { profileStorage } from '../services/profileStorage'
 import SaveProfileDialog from './SaveProfileDialog.vue'
@@ -32,7 +33,7 @@ import type {
 
 interface Props {
   visible: boolean
-  sessionId: string
+  tabId: string
 }
 
 const props = defineProps<Props>()
@@ -47,6 +48,7 @@ const emit = defineEmits<Emits>()
 
 const message = useMessage()
 const connectionStore = useConnectionStore()
+const sessionStore = useSessionStore()
 
 // Profile management
 const profiles = ref<string[]>([])
@@ -160,15 +162,26 @@ async function handleConnect() {
   }
 
   try {
-    await connectionStore.connect(params, props.sessionId)
-    if (connectionStore.isConnected) {
+    const activeTab = sessionStore.activeTab
+    const previousSessionId = activeTab?.sessionId
+
+    await connectionStore.connect(params, props.tabId)
+
+    // Get the sessionId that was just set
+    const currentTab = sessionStore.activeTab
+    const newSessionId = currentTab?.sessionId
+
+    if (connectionStore.isConnected && newSessionId && newSessionId !== previousSessionId) {
       message.success('Connected successfully')
-      emit('connected', props.sessionId)
+      emit('connected', newSessionId)
       closePanel()
     } else if (connectionStore.hasError) {
       message.error(connectionStore.error || 'Connection failed')
+    } else {
+      message.warning('Connection state unclear')
     }
   } catch (error) {
+    console.error('[ConfigPanel] Connection error:', error)
     message.error(`Connection error: ${error}`)
   }
 }
@@ -176,10 +189,10 @@ async function handleConnect() {
 // Handle disconnect
 async function handleDisconnect() {
   try {
-    await connectionStore.disconnect(props.sessionId)
+    await connectionStore.disconnect(props.tabId)
     if (!connectionStore.isConnected) {
       message.success('Disconnected')
-      emit('disconnected', props.sessionId)
+      emit('disconnected', props.tabId)
     }
   } catch (error) {
     message.error(`Disconnect error: ${error}`)

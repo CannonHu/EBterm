@@ -55,7 +55,8 @@ pub async fn start_batch_streamer(
                     last_batch_time = Instant::now();
                 }
             }
-            Ok(Err(_)) => {
+            Ok(Err(e)) => {
+                tracing::error!("[data_streamer] read error: {}", e);
                 if !batch_buffer.is_empty() {
                     send_batch(&app, &connection_id, &batch_buffer).await;
                 }
@@ -70,19 +71,13 @@ pub async fn start_batch_streamer(
             }
         }
     }
-
-    tracing::info!(
-        connection_id = %connection_id,
-        "Data streamer stopped"
-    );
 }
 
 async fn send_batch(app: &tauri::AppHandle, connection_id: &str, data: &[u8]) {
     let event = DataReceivedEvent {
-        connection_id: connection_id.to_string(),
+        session_id: connection_id.to_string(),
         data: data.to_vec(),
     };
-
     let _ = app.emit("data_received", event);
 }
 

@@ -62,7 +62,7 @@ export const useSessionStore = defineStore('session', () => {
       const terminalStore = useTerminalStore();
       terminalStore.removeState(tabId);
       const connectionStore = useConnectionStore();
-      connectionStore.removeSession(tab.sessionId);
+      connectionStore.removeTab(tabId);
     }
 
     tabs.value.splice(index, 1);

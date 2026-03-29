@@ -89,7 +89,9 @@ async function handleDisconnected() {
 }
 
 function handleTerminalData(data: string) {
-  if (!props.sessionId) return
+  if (!props.sessionId) {
+    return;
+  }
   connectionStore.writeText(props.sessionId, data)
 }
 
@@ -195,7 +197,7 @@ defineExpose({
 
     <ConfigPanel
       :visible="isConfigPanelOpen"
-      :session-id="sessionId || ''"
+      :tab-id="props.tabId"
       @update:visible="closeConfig"
       @connected="handleConnected"
       @disconnected="handleDisconnected"

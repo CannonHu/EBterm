@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 // Re-export core types from lib for convenience
 pub use embedded_debugger::connection::types::{
-    ConnectionStatus, SerialConfig, TelnetConfig, DataBits, Parity, StopBits, FlowControl,
+    ConnectionStatus, SerialConfig, TelnetConfig,
 };
 
 /// IPC error type
@@ -93,20 +93,39 @@ pub struct CommandInfo {
 /// Data received event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataReceivedEvent {
-    pub connection_id: String,
+    pub session_id: String,  // 改名为 session_id 以匹配前端期望
     pub data: Vec<u8>,
 }
 
 /// Status changed event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusChangedEvent {
-    pub connection_id: String,
+    pub session_id: String,
     pub status: ConnectionStatus,
 }
 
 /// Error occurred event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorOccurredEvent {
-    pub connection_id: String,
+    pub session_id: String,
     pub error: IpcError,
+}
+
+/// Write text command parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WriteTextParams {
+    pub connection_id: String,
+    pub text: String,
+}
+
+/// Disconnect command parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisconnectParams {
+    pub connection_id: String,
+}
+
+/// Get connection status command parameters
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetConnectionStatusParams {
+    pub connection_id: String,
 }

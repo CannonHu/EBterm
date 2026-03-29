@@ -28,7 +28,6 @@ fn main() {
             connect,
             disconnect,
             get_connection_status,
-            write_data,
             write_text,
             start_logging,
             stop_logging,
