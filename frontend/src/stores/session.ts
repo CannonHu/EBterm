@@ -38,7 +38,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) || null);
 
-  function addTab(): void {
+  function addTab(): string {
     const id = crypto.randomUUID();
     const newTab: TabState = {
       id,
@@ -49,6 +49,7 @@ export const useSessionStore = defineStore('session', () => {
     };
     tabs.value.push(newTab);
     setActiveTab(id);
+    return id;
   }
 
   function closeTab(tabId: string): void {

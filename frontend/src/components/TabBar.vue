@@ -2,11 +2,16 @@
 import { ref, h } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { useTerminalStore } from '../stores/terminal'
-import { NButton, NTabs, NTabPane, NDropdown, NInput, NIcon, NModal } from 'naive-ui'
+import { useConnectionStore } from '../stores/connection'
+import { NButton, NTabs, NTabPane, NDropdown, NInput, NIcon, NModal, useMessage } from 'naive-ui'
 import { Add, Close, Edit } from '@vicons/carbon'
+import ProfileSelectorDialog from '../components/ProfileSelectorDialog.vue'
+import type { SavedProfile } from '../types/ipc'
 
 const sessionStore = useSessionStore()
 const terminalStore = useTerminalStore()
+const connectionStore = useConnectionStore()
+const message = useMessage()
 
 const showRenameModal = ref(false)
 const renameTabId = ref<string | null>(null)
@@ -16,9 +21,14 @@ const dropdownX = ref(0)
 const dropdownY = ref(0)
 const contextTabId = ref<string | null>(null)
 
+const showProfileSelector = ref(false)
+const isConnectingFromProfile = ref(false)
+
 const connectionOptions = [
   { label: 'Serial Port', key: 'serial' },
   { label: 'Telnet', key: 'telnet' },
+  { type: 'divider', key: 'd1' },
+  { label: 'Load from Profile...', key: 'profile' },
 ]
 
 const contextMenuOptions = [
@@ -44,6 +54,11 @@ function handleClose(tabId: string) {
 }
 
 function handleAdd(type: string) {
+  if (type === 'profile') {
+    showProfileSelector.value = true
+    return
+  }
+  
   const tab = sessionStore.activeTab;
   if (tab) {
     terminalStore.toggleConfigPanel(tab.id);
@@ -97,6 +112,50 @@ function cancelRename() {
   showRenameModal.value = false
   renameTabId.value = null
   renameValue.value = ''
+}
+
+async function handleProfileConnect(profile: SavedProfile) {
+  isConnectingFromProfile.value = true
+  
+  try {
+    // 1. Create new tab
+    const newTabId = sessionStore.addTab()
+    sessionStore.setActiveTab(newTabId)
+    
+    // 2. Set tab title to profile name
+    sessionStore.renameTab(newTabId, profile.name)
+    
+    // 3. Connect using connectionStore
+    await connectionStore.connect(profile.params, newTabId)
+    
+    if (connectionStore.isConnected) {
+      // Connection success, close dialog
+      showProfileSelector.value = false
+      message.success(`Connected using profile "${profile.name}"`)
+    } else if (connectionStore.hasError) {
+      // Connection failed, show error (keep tab open)
+      message.error(`Connection failed: ${connectionStore.error}`)
+    }
+  } catch (error) {
+    console.error('Profile connection error:', error)
+    message.error(`Connection error: ${error}`)
+    // Reset state and close dialog on failure
+    showProfileSelector.value = false
+  } finally {
+    isConnectingFromProfile.value = false
+  }
+}
+
+function handleOpenConfigPanel() {
+  const tab = sessionStore.activeTab
+  if (tab) {
+    terminalStore.openConfigPanel(tab.id)
+  } else {
+    // If no tab, create new tab
+    const newTabId = sessionStore.addTab()
+    sessionStore.setActiveTab(newTabId)
+    terminalStore.openConfigPanel(newTabId)
+  }
 }
 </script>
 
@@ -159,6 +218,13 @@ function cancelRename() {
     >
       <n-input v-model:value="renameValue" placeholder="Enter new name" @keyup.enter="confirmRename" />
     </n-modal>
+
+    <ProfileSelectorDialog
+      :visible="showProfileSelector"
+      @update:visible="showProfileSelector = $event"
+      @connect="handleProfileConnect"
+      @open-config-panel="handleOpenConfigPanel"
+    />
   </div>
 </template>
 

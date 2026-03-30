@@ -75,6 +75,11 @@ export const useTerminalStore = defineStore('terminal', () => {
     state.isConfigPanelOpen = !state.isConfigPanelOpen;
   }
 
+  function openConfigPanel(id: string): void {
+    const state = getState(id);
+    state.isConfigPanelOpen = true;
+  }
+
   function closeConfigPanel(id: string): void {
     const state = getState(id);
     state.isConfigPanelOpen = false;
@@ -92,6 +97,7 @@ export const useTerminalStore = defineStore('terminal', () => {
     openSearch,
     closeSearch,
     toggleConfigPanel,
+    openConfigPanel,
     closeConfigPanel
   };
 });
