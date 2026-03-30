@@ -13,10 +13,9 @@ import {
   NThing
 } from 'naive-ui'
 import {
-  Server,
+  DataBase,
   Wifi,
-  ArrowRight,
-  Close
+  ArrowRight
 } from '@vicons/carbon'
 import { profileStorage } from '../services/profileStorage'
 import type { SavedProfile } from '../types/ipc'
@@ -106,7 +105,7 @@ function formatSavedAt(savedAt: string): string {
 
 // Get icon for connection type
 function getConnectionTypeIcon(type: string) {
-  return type === 'serial' ? Server : Wifi
+  return type === 'serial' ? DataBase : Wifi
 }
 
 // Handle profile selection

@@ -324,7 +324,7 @@ onMounted(() => {
     :mask-closable="!isConnecting"
     :trap-focus="false"
   >
-    <NDrawerContent title="Connection Configuration" closable @close="closePanel">
+    <NDrawerContent title="Connection Configuration">
       <NForm label-placement="left" label-width="120" :disabled="isConnecting">
         <!-- Connection Type and Name -->
         <div class="type-name-grid">
