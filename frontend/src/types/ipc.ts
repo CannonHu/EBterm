@@ -117,7 +117,6 @@ export interface TerminalUIState {
 export interface SavedProfile {
   name: string;
   params: ConnectionParams;
-  savedAt: string;
 }
 
 export type ProfileStorage = Record<string, SavedProfile>;

@@ -59,10 +59,15 @@ function handleAdd(type: string) {
     return
   }
   
-  const tab = sessionStore.activeTab;
-  if (tab) {
-    terminalStore.toggleConfigPanel(tab.id);
-  }
+  // Create new tab for new connection
+  const newTabId = sessionStore.addTab()
+  const tab = sessionStore.tabs.find(t => t.id === newTabId)!
+  
+  // TODO: Set connection type based on selection (serial/telnet)
+  // This needs to be passed to ConfigPanel
+  
+  // Open ConfigPanel for the new tab
+  terminalStore.openConfigPanel(tab.id);
 }
 
 function handleContextMenu(e: MouseEvent, tabId: string) {
@@ -161,7 +166,7 @@ function handleOpenConfigPanel() {
 
 <template>
   <div class="tab-bar">
-    <div class="tabs-wrapper">
+    <div class="tabs-wrapper" v-if="sessionStore.tabs.length > 0">
       <n-tabs
         :value="sessionStore.activeTabId"
         type="card"
@@ -188,8 +193,11 @@ function handleOpenConfigPanel() {
         </n-tab-pane>
       </n-tabs>
     </div>
+    <div class="tabs-placeholder" v-else>
+      <!-- Empty state when no tabs -->
+    </div>
 
-    <n-dropdown :options="connectionOptions" @select="handleAdd">
+    <n-dropdown :options="connectionOptions" trigger="click" placement="bottom-end" @select="handleAdd">
       <n-button size="small" quaternary circle class="add-btn">
         <template #icon>
           <n-icon><Add /></n-icon>
@@ -239,7 +247,7 @@ function handleOpenConfigPanel() {
   gap: 8px;
 }
 
-.tabs-wrapper {
+.tabs-wrapper, .tabs-placeholder {
   flex: 1;
   min-width: 0;
   overflow: hidden;

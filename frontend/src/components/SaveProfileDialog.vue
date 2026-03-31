@@ -54,6 +54,7 @@ function validateName(name: string): string | null {
 
 // Handle save
 function handleSave() {
+  console.log('[SaveProfileDialog] handleSave props.params:', JSON.stringify(props.params))
   const error = validateName(profileName.value)
   if (error) {
     message.error(error)

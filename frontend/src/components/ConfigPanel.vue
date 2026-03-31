@@ -18,7 +18,7 @@ import { useSessionStore } from '../stores/session'
 import { tauriInvoke } from '../api/tauri'
 import { profileStorage } from '../services/profileStorage'
 import SaveProfileDialog from './SaveProfileDialog.vue'
-import ProfileDropdown from './ProfileDropdown.vue'
+/* ProfileDropdown removed - moved to TabBar */
 import type {
   ConnectionParams,
   SerialParams,
@@ -51,7 +51,7 @@ const connectionStore = useConnectionStore()
 const sessionStore = useSessionStore()
 
 // Profile management
-const profiles = ref<string[]>([])
+/* profiles ref removed - Load Profile moved to TabBar */
 const isSaveDialogVisible = ref(false)
 
 // Connection type
@@ -84,6 +84,12 @@ const telnetForm = ref<TelnetParams>({
 // Connection state
 const isConnecting = computed(() => connectionStore.isConnecting)
 const isConnected = computed(() => connectionStore.isConnected)
+
+// Save dialog params - computed to ensure reactivity
+const saveDialogParams = computed(() => ({
+  type: connectionType.value,
+  ...(connectionType.value === 'serial' ? serialForm.value : telnetForm.value)
+}))
 
 // Select options
 const baudRateOptions = [
@@ -231,22 +237,13 @@ watch(
   }
 )
 
-// Load profiles
-async function loadProfiles() {
-  try {
-    const profileList = await profileStorage.listProfiles()
-    profiles.value = profileList
-  } catch (error) {
-    console.error('Failed to load profiles:', error)
-  }
-}
+/* loadProfiles removed - Load Profile moved to TabBar */
 
 // Handle save profile
 async function handleSaveProfile(name: string, params: any) {
   try {
     await profileStorage.saveProfile(name, params)
     message.success(`Profile '${name}' saved successfully`)
-    await loadProfiles()
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('Maximum 100 profiles')) {
@@ -260,59 +257,15 @@ async function handleSaveProfile(name: string, params: any) {
   }
 }
 
-// Handle load profile
-async function handleLoadProfile(name: string) {
-  try {
-    const profile = await profileStorage.getProfile(name)
-    if (!profile) {
-      message.error(`Profile '${name}' not found`)
-      return
-    }
+/* handleLoadProfile removed - Load Profile moved to TabBar */
 
-    const { params, savedAt } = profile
-
-    if (params.type === 'serial') {
-      connectionType.value = 'serial'
-      serialForm.value = {
-        port: params.port,
-        baud_rate: params.baud_rate,
-        data_bits: params.data_bits,
-        parity: params.parity,
-        stop_bits: params.stop_bits,
-        flow_control: params.flow_control
-      }
-    } else if (params.type === 'telnet') {
-      connectionType.value = 'telnet'
-      telnetForm.value = {
-        host: params.host,
-        port: params.port,
-        connect_timeout_secs: params.connect_timeout_secs
-      }
-    }
-
-    message.success(`Profile '${name}' loaded (saved at ${new Date(savedAt).toLocaleString()})`)
-  } catch (error) {
-    message.error(`Failed to load profile: ${error}`)
-  }
-}
-
-// Handle delete profile
-async function handleDeleteProfile(name: string) {
-  try {
-    await profileStorage.deleteProfile(name)
-    message.success(`Profile '${name}' deleted`)
-    await loadProfiles()
-  } catch (error) {
-    message.error(`Failed to delete profile: ${error}`)
-  }
-}
+/* handleDeleteProfile removed - Profile management moved to ProfileSelectorDialog */
 
 // Load serial ports on mount if panel is visible
 onMounted(() => {
   if (props.visible && connectionType.value === 'serial') {
     loadSerialPorts()
   }
-  loadProfiles()
 })
 </script>
 
@@ -420,9 +373,7 @@ onMounted(() => {
 
       <template #footer>
         <div class="drawer-footer">
-          <ProfileDropdown :profiles="profiles" @load="handleLoadProfile" @delete="handleDeleteProfile">
-            <template #default>Load Profile</template>
-          </ProfileDropdown>
+          <!-- Load Profile moved to TabBar "+" menu -->
           <NButton quaternary @click="closePanel">Cancel</NButton>
           <NButton quaternary @click="isSaveDialogVisible = true">Save Profile</NButton>
           <NButton
@@ -448,10 +399,7 @@ onMounted(() => {
 
     <SaveProfileDialog
       :visible="isSaveDialogVisible"
-      :params="{
-        type: connectionType.value,
-        ...(connectionType.value === 'serial' ? serialForm.value : telnetForm.value)
-      }"
+      :params="saveDialogParams"
       @update:visible="isSaveDialogVisible = $event"
       @save="handleSaveProfile"
     />

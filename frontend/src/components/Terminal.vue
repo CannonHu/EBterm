@@ -213,21 +213,21 @@ function getSearchMatches(): number {
 }
 
 const debouncedFit = useDebounceFn(fitTerminal, 100)
-let resizeUnwatch: (() => void) | null = null
+let resizeObserver: { stop: () => void } | null = null
 
 onMounted(() => {
   createTerminal()
 
   if (containerRef.value) {
-    resizeUnwatch = useResizeObserver(containerRef, () => {
+    resizeObserver = useResizeObserver(containerRef, () => {
       debouncedFit()
     })
   }
 })
 
 onUnmounted(() => {
-  if (resizeUnwatch) {
-    resizeUnwatch()
+  if (resizeObserver) {
+    resizeObserver.stop()
   }
 
   if (writeTimeout) {

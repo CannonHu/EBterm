@@ -73,7 +73,8 @@ export const useSessionStore = defineStore('session', () => {
         const newIndex = Math.min(index, tabs.value.length - 1);
         setActiveTab(tabs.value[newIndex].id);
       } else {
-        activeTabId.value = null;
+        // Auto create new tab when last one is closed
+        addTab();
       }
     }
   }

@@ -72,8 +72,7 @@ export class ProfileStorageService {
 
     const savedProfile: SavedProfile = {
       name,
-      params,
-      savedAt: new Date().toISOString()
+      params
     }
 
     profiles[name] = savedProfile

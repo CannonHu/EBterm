@@ -86,22 +86,7 @@ async function loadProfiles() {
   }
 }
 
-// Format date for display
-function formatSavedAt(savedAt: string): string {
-  const date = new Date(savedAt)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-
-  return date.toLocaleDateString()
-}
+// Remove formatSavedAt - savedAt field is not needed
 
 // Get icon for connection type
 function getConnectionTypeIcon(type: string) {
@@ -221,9 +206,7 @@ function handleCloseError() {
                 }}
               </span>
             </template>
-            <template #header-extra>
-              <span class="saved-time">{{ formatSavedAt(profile.savedAt) }}</span>
-            </template>
+          <!-- Removed saved time display -->
           </NThing>
         </NListItem>
       </NList>
@@ -284,12 +267,14 @@ function handleCloseError() {
   transition: background-color 0.2s ease;
 }
 
-:deep(.n-list-item.is-selected) {
-  background-color: var(--n-option-color-active);
+:deep(.n-list-item.n-list-item--clickable:hover),
+:deep(.n-list-item:hover) {
+  background-color: var(--n-option-color-hover);
 }
 
-:deep(.n-list-item.is-selected:hover) {
-  background-color: var(--n-option-color-active);
+:deep(.n-list-item--selected),
+:deep(.n-list-item.is-selected) {
+  background-color: var(--n-option-color-active) !important;
 }
 
 .profile-meta {
@@ -297,11 +282,7 @@ function handleCloseError() {
   color: var(--n-text-color-3);
 }
 
-.saved-time {
-  font-size: 12px;
-  color: var(--n-text-color-3);
-  white-space: nowrap;
-}
+/* Removed saved-time CSS */
 
 .dialog-footer {
   display: flex;

@@ -9,6 +9,8 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "fs:default",
+    "fs:allow-appdata-write-recursive",
+    "fs:allow-appdata-read-recursive",
     {
       "identifier": "fs:scope",
       "allow": [
