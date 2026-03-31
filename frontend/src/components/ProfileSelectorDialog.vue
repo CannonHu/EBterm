@@ -15,7 +15,8 @@ import {
 import {
   DataBase,
   Wifi,
-  ArrowRight
+  ArrowRight,
+  CheckmarkOutline
 } from '@vicons/carbon'
 import { profileStorage } from '../services/profileStorage'
 import type { SavedProfile } from '../types/ipc'
@@ -43,11 +44,10 @@ const isConnecting = ref(false)
 const connectionError = ref<string | null>(null)
 const selectedProfile = ref<SavedProfile | null>(null)
 
-// Computed: sorted profiles by saved time (newest first)
+// Computed: sorted profiles in reverse order (newest first)
+// Profiles are loaded from JSON in insertion order, so we reverse to show newest first
 const sortedProfiles = computed(() => {
-  return [...profiles.value].sort((a, b) => {
-    return new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
-  })
+  return [...profiles.value].reverse()
 })
 
 // Watch for dialog visibility changes
@@ -85,8 +85,6 @@ async function loadProfiles() {
     isLoading.value = false
   }
 }
-
-// Remove formatSavedAt - savedAt field is not needed
 
 // Get icon for connection type
 function getConnectionTypeIcon(type: string) {
@@ -206,7 +204,9 @@ function handleCloseError() {
                 }}
               </span>
             </template>
-          <!-- Removed saved time display -->
+            <template #header-extra v-if="selectedProfile?.name === profile.name">
+              <NIcon :component="CheckmarkOutline" class="selected-icon" />
+            </template>
           </NThing>
         </NListItem>
       </NList>
@@ -268,18 +268,26 @@ function handleCloseError() {
 }
 
 :deep(.n-list-item.n-list-item--clickable:hover),
-:deep(.n-list-item:hover) {
-  background-color: var(--n-option-color-hover);
-}
-
+:deep(.n-list-item:hover),
 :deep(.n-list-item--selected),
 :deep(.n-list-item.is-selected) {
-  background-color: var(--n-option-color-active) !important;
+  background-color: var(--n-option-color-hover);
+  transition: background-color 0.2s ease;
 }
 
 .profile-meta {
   font-size: 12px;
   color: var(--n-text-color-3);
+}
+
+.selected-icon {
+  color: var(--n-primary-color);
+  font-size: 19px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  vertical-align: middle;
 }
 
 /* Removed saved-time CSS */
