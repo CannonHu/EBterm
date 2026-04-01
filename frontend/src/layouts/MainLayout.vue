@@ -1,12 +1,41 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import TabBar from '../components/TabBar.vue'
 import TerminalPane from '../components/TerminalPane.vue'
 import StatusBar from '../components/StatusBar.vue'
 import { useSessionStore } from '../stores/session'
+import { useTerminalStore } from '../stores/terminal'
 import { useTauriEvents } from '../composables/useTauriEvents'
 
 const sessionStore = useSessionStore()
+const terminalStore = useTerminalStore()
 const { cleanup } = useTauriEvents()
+
+// 检查当前标签页是否已连接（有 sessionId）
+function canOpenSearch(): boolean {
+  const activeTabId = sessionStore.activeTabId
+  if (!activeTabId) return false
+  const activeTab = sessionStore.tabs.find(t => t.id === activeTabId)
+  return !!(activeTab?.sessionId)
+}
+
+// 全局快捷键：Ctrl/Cmd + F 打开搜索
+const handleKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+    e.preventDefault()
+    if (canOpenSearch()) {
+      terminalStore.openSearch(sessionStore.activeTabId!)
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>

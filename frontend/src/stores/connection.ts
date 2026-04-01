@@ -97,7 +97,7 @@ export const useConnectionStore = defineStore('connection', () => {
     const result = await tauriInvoke<string>('connect', { params });
 
     if (result.success && result.data) {
-      const sessionId = result.data.data || result.data;
+      const sessionId = result.data;
       tabStatuses.value.set(tabId, 'connected');
       sessionIdToTabId.value.set(sessionId, tabId);
       sessionStore.connectTab(tabId, sessionId);

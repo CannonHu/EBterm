@@ -113,13 +113,13 @@ function closeSearch() {
 .search-bar-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 12px;
-  background: rgba(30, 30, 30, 0.95);
+  background: rgba(245, 245, 245, 0.95);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .search-input {
@@ -128,9 +128,15 @@ function closeSearch() {
 
 .match-info {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(0, 0, 0, 0.6);
   white-space: nowrap;
-  min-width: 70px;
+  min-width: 60px;
   text-align: center;
+  padding: 0 4px;
+}
+
+/* Reduce button size and center icon for more compact layout */
+.search-bar-content :deep(.n-button) {
+  padding: 0 4px;
 }
 </style>

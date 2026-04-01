@@ -22,9 +22,17 @@ interface Emits {
   (e: 'data', data: string): void
   (e: 'resize', cols: number, rows: number): void
   (e: 'ready'): void
+  (e: 'searchResults', result: { matchCount: number; currentMatch: number }): void
 }
 
 const emit = defineEmits<Emits>()
+
+interface SearchResult {
+  matchCount: number
+  currentMatch: number
+}
+
+const searchResult = ref<SearchResult>({ matchCount: 0, currentMatch: 0 })
 
 const containerRef = ref<HTMLElement | null>(null)
 
@@ -94,7 +102,16 @@ function createTerminal(): void {
 
   fitAddon = new FitAddon()
   searchAddon = new SearchAddon()
-  
+
+  // Set up search result event handling
+  searchAddon.onDidChangeResults((result) => {
+    searchResult.value = {
+      matchCount: result.resultCount,
+      currentMatch: result.resultIndex + 1 // Convert to 1-based indexing for display
+    }
+    emit('searchResults', searchResult.value)
+  })
+
   terminal.loadAddon(fitAddon)
   terminal.loadAddon(searchAddon)
   terminal.loadAddon(new WebLinksAddon())
@@ -200,16 +217,35 @@ function getDimensions(): { cols: number; rows: number } {
 
 function search(query: string): boolean {
   if (!searchAddon) return false
-  return searchAddon.findNext(query)
+  return searchAddon.findNext(query, {
+    decorations: {
+      matchBackground: 'rgba(255, 255, 0, 0.3)',
+      matchBorder: '#ffff00',
+      activeMatchBackground: 'rgba(255, 136, 0, 0.5)',
+      activeMatchBorder: '#ff8800',
+    }
+  })
 }
 
 function searchPrevious(query: string): boolean {
   if (!searchAddon) return false
-  return searchAddon.findPrevious(query)
+  return searchAddon.findPrevious(query, {
+    decorations: {
+      matchBackground: 'rgba(255, 255, 0, 0.3)',
+      matchBorder: '#ffff00',
+      activeMatchBackground: 'rgba(255, 136, 0, 0.5)',
+      activeMatchBorder: '#ff8800',
+    }
+  })
 }
 
 function getSearchMatches(): number {
-  return 0
+  return searchResult.value.matchCount
+}
+
+function clearSearch(): void {
+  if (!searchAddon) return
+  searchAddon.clearDecorations()
 }
 
 const debouncedFit = useDebounceFn(fitTerminal, 100)
@@ -263,7 +299,8 @@ defineExpose({
   fit: fitTerminal,
   search,
   searchPrevious,
-  getSearchMatches
+  getSearchMatches,
+  clearSearch
 })
 </script>
 

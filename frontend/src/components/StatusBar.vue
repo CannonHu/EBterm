@@ -11,7 +11,7 @@
           <ClockIcon :class="{ 'icon-active': showTimestamp }" />
         </template>
       </NButton>
-      <NButton size="tiny" quaternary @click="openSearch">
+      <NButton size="tiny" quaternary :disabled="!canUseSearch" @click="openSearch">
         <template #icon>
           <SearchIcon />
         </template>
@@ -57,6 +57,14 @@ const formattedBytesReceived = computed(() => formatBytes(connectionStore.stats.
 const showTimestamp = computed(() => {
   const state = terminalStore.activeTerminalState;
   return state?.showTimestamps ?? false;
+});
+
+// 当前标签页是否已连接（有 sessionId）
+const canUseSearch = computed(() => {
+  const activeTabId = sessionStore.activeTabId;
+  if (!activeTabId) return false;
+  const activeTab = sessionStore.tabs.find(t => t.id === activeTabId);
+  return !!(activeTab?.sessionId);
 });
 
 function formatBytes(bytes: number): string {

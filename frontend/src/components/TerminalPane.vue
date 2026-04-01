@@ -79,6 +79,12 @@ function closeSearch() {
   searchQuery.value = ''
   searchMatchCount.value = 0
   currentSearchMatch.value = 0
+  terminalRef.value?.clearSearch()
+}
+
+function handleSearchResults(result: { matchCount: number; currentMatch: number }) {
+  searchMatchCount.value = result.matchCount
+  currentSearchMatch.value = result.currentMatch
 }
 
 async function handleConnected(sessionId: string) {
@@ -104,11 +110,9 @@ function handleSearch(query: string) {
   searchQuery.value = query
   if (!terminalRef.value) return
   if (query) {
-    const found = terminalRef.value.search(query)
-    searchMatchCount.value = terminalRef.value.getSearchMatches()
-    if (found) {
-      currentSearchMatch.value = 1
-    }
+    // search() will trigger onDidChangeResults which calls handleSearchResults
+    // Don't set searchMatchCount here - wait for the event
+    terminalRef.value.search(query)
   } else {
     searchMatchCount.value = 0
     currentSearchMatch.value = 0
@@ -118,17 +122,13 @@ function handleSearch(query: string) {
 function handleSearchNext() {
   if (!terminalRef.value || !searchQuery.value) return
   terminalRef.value.search(searchQuery.value)
-  if (searchMatchCount.value > 0) {
-    currentSearchMatch.value = (currentSearchMatch.value % searchMatchCount.value) + 1
-  }
+  // currentMatch is updated automatically via searchResults event
 }
 
 function handleSearchPrevious() {
   if (!terminalRef.value || !searchQuery.value) return
   terminalRef.value.searchPrevious(searchQuery.value)
-  if (searchMatchCount.value > 0) {
-    currentSearchMatch.value = currentSearchMatch.value > 1 ? currentSearchMatch.value - 1 : searchMatchCount.value
-  }
+  // currentMatch is updated automatically via searchResults event
 }
 
 function writeToTerminal(data: string) {
@@ -195,6 +195,7 @@ defineExpose({
         :show-timestamp="showTimestamp"
         @data="handleTerminalData"
         @ready="handleTerminalReady"
+        @search-results="handleSearchResults"
       />
       <SearchBar
         :visible="isSearchOpen"
