@@ -55,7 +55,7 @@ const sessionStore = useSessionStore()
 const isSaveDialogVisible = ref(false)
 
 // Connection type
-const connectionType = ref<'serial' | 'telnet'>('serial')
+const connectionType = ref<'serial' | 'telnet'>('telnet')
 
 // Connection name
 const connectionName = ref<string>('')
@@ -257,10 +257,6 @@ async function handleSaveProfile(name: string, params: any) {
   }
 }
 
-/* handleLoadProfile removed - Load Profile moved to TabBar */
-
-/* handleDeleteProfile removed - Profile management moved to ProfileSelectorDialog */
-
 // Load serial ports on mount if panel is visible
 onMounted(() => {
   if (props.visible && connectionType.value === 'serial') {
@@ -273,7 +269,7 @@ onMounted(() => {
   <NDrawer
     :show="visible"
     placement="top"
-    :height="320"
+    :height="325"
     :mask-closable="!isConnecting"
     :trap-focus="false"
   >
@@ -283,8 +279,8 @@ onMounted(() => {
         <div class="type-name-grid">
           <NFormItem label="Type">
             <NRadioGroup v-model:value="connectionType">
-              <NRadioButton value="serial">Serial</NRadioButton>
               <NRadioButton value="telnet">Telnet</NRadioButton>
+              <NRadioButton value="serial">Serial</NRadioButton>
             </NRadioGroup>
           </NFormItem>
 
@@ -345,7 +341,7 @@ onMounted(() => {
             <NFormItem label="Host" required>
               <NInput
                 v-model:value="telnetForm.host"
-                placeholder="Enter host address (e.g., 192.168.1.1)"
+                placeholder="Enter Host IP address"
                 clearable
               />
             </NFormItem>
@@ -410,19 +406,28 @@ onMounted(() => {
 .type-name-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px 24px;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+
+.type-name-grid :deep(.n-form-item) {
+  margin-bottom: 0 !important;
 }
 
 .serial-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px 24px;
+  gap: 8px 24px;
+}
+
+.serial-grid :deep(.n-form-item) {
+  margin-bottom: 0 !important;
 }
 
 .telnet-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px 24px;
+  gap: 8px 24px;
 }
 
 .empty-ports {
@@ -432,9 +437,19 @@ onMounted(() => {
   font-size: 13px;
 }
 
+/* 移除drawer footer默认的上下padding */
+:deep(.n-drawer-footer) {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
 .drawer-footer {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.drawer-footer :deep(.n-button) {
+  height: 33px !important;
 }
 </style>

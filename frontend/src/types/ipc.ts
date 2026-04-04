@@ -40,13 +40,6 @@ export type ConnectionParams =
   | { type: 'serial' } & SerialParams
   | { type: 'telnet' } & TelnetParams;
 
-export interface ConnectionStats {
-  bytes_sent: number;
-  bytes_received: number;
-  packets_sent: number;
-  packets_received: number;
-}
-
 export interface SessionInfo {
   id: string;
   name: string;
@@ -54,7 +47,6 @@ export interface SessionInfo {
   status: ConnectionStatus;
   created_at: string;
   last_activity?: string;
-  stats: ConnectionStats;
   logging_enabled: boolean;
   log_file_path?: string;
 }

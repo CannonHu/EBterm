@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { ConnectionParams, ConnectionStatus, ConnectionStats, LoggingStatus } from '../types/ipc';
+import type { ConnectionParams, ConnectionStatus, LoggingStatus } from '../types/ipc';
 import { tauriInvoke } from '../api/tauri';
 import { useSessionStore } from './session';
 
@@ -13,7 +13,6 @@ export const useConnectionStore = defineStore('connection', () => {
   // Store connection state by tabId
   const tabStatuses = ref<Map<string, ConnectionStatus>>(new Map());
   const tabConfigs = ref<Map<string, ConnectionParams>>(new Map());
-  const tabStats = ref<Map<string, ConnectionStats>>(new Map());
   const tabErrors = ref<Map<string, string>>(new Map());
   const tabLoggingStatuses = ref<Map<string, LoggingStatus>>(new Map());
 
@@ -26,12 +25,6 @@ export const useConnectionStore = defineStore('connection', () => {
     const activeTabId = sessionStore.activeTabId;
     if (!activeTabId) return null;
     return tabConfigs.value.get(activeTabId) ?? null;
-  });
-
-  const stats = computed(() => {
-    const activeTabId = sessionStore.activeTabId;
-    const defaultStats: ConnectionStats = { bytes_sent: 0, bytes_received: 0, packets_sent: 0, packets_received: 0 };
-    return activeTabId ? tabStats.value.get(activeTabId) ?? defaultStats : defaultStats;
   });
 
   const error = computed(() => {
@@ -59,21 +52,12 @@ export const useConnectionStore = defineStore('connection', () => {
     return tabConfigs.value.get(tabId);
   }
 
-  function getTabStats(tabId: string): ConnectionStats {
-    const defaultStats: ConnectionStats = { bytes_sent: 0, bytes_received: 0, packets_sent: 0, packets_received: 0 };
-    return tabStats.value.get(tabId) ?? defaultStats;
-  }
-
   function getTabError(tabId: string): string | null {
     return tabErrors.value.get(tabId) ?? null;
   }
 
   function setTabStatus(tabId: string, status: ConnectionStatus): void {
     tabStatuses.value.set(tabId, status);
-  }
-
-  function setTabStats(tabId: string, stats: ConnectionStats): void {
-    tabStats.value.set(tabId, stats);
   }
 
   function setTabError(tabId: string, error: string | null): void {
@@ -101,7 +85,6 @@ export const useConnectionStore = defineStore('connection', () => {
     }
     tabStatuses.value.delete(tabId);
     tabConfigs.value.delete(tabId);
-    tabStats.value.delete(tabId);
     tabErrors.value.delete(tabId);
     tabLoggingStatuses.value.delete(tabId);
   }
@@ -144,7 +127,6 @@ export const useConnectionStore = defineStore('connection', () => {
     if (result.success) {
       tabStatuses.value.set(tabId, 'disconnected');
       tabConfigs.value.delete(tabId);
-      tabStats.value.delete(tabId);
       sessionIdToTabId.value.delete(sessionId);
     } else {
       tabStatuses.value.set(tabId, 'error');
@@ -237,21 +219,17 @@ export const useConnectionStore = defineStore('connection', () => {
   return {
     tabStatuses,
     tabConfigs,
-    tabStats,
     tabErrors,
     status,
     config,
-    stats,
     error,
     isConnected,
     isConnecting,
     hasError,
     getTabStatus,
     getTabConfig,
-    getTabStats,
     getTabError,
     setTabStatus,
-    setTabStats,
     setTabError,
     removeTab,
     setSessionStatus,

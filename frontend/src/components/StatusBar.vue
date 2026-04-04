@@ -3,25 +3,23 @@
     <div class="left-section">
       <span class="status-dot" :class="connectionStatusClass" />
       <span class="session-name">{{ sessionName }}</span>
-      <span v-if="isLogging" class="log-status" :title="logFilePath">
-        <span class="log-dot"></span>
-        {{ shortLogFilePath }}
-      </span>
     </div>
     <div class="right-section">
-      <span class="stats">TX: {{ formattedBytesSent }} | RX: {{ formattedBytesReceived }}</span>
-      <NButton size="tiny" quaternary @click="toggleTimestamp">
+      <span v-if="isLogging" class="log-status" :title="logFilePath">
+        {{ shortLogFilePath }}
+      </span>
+      <NButton size="small" quaternary @click="toggleTimestamp">
         <template #icon>
           <ClockIcon :class="{ 'icon-active': showTimestamp }" />
         </template>
       </NButton>
-      <NButton size="tiny" quaternary :disabled="!canUseSearch" @click="openSearch">
+      <NButton size="small" quaternary :disabled="!canUseSearch" @click="openSearch">
         <template #icon>
           <SearchIcon />
         </template>
       </NButton>
       <NButton
-        size="tiny"
+        size="small"
         quaternary
         :disabled="!canUseLogging"
         @click="toggleLogging"
@@ -67,9 +65,6 @@ const sessionName = computed(() => {
   return tab.title;
 });
 
-const formattedBytesSent = computed(() => formatBytes(connectionStore.stats.bytes_sent));
-const formattedBytesReceived = computed(() => formatBytes(connectionStore.stats.bytes_received));
-
 const showTimestamp = computed(() => {
   const state = terminalStore.activeTerminalState;
   return state?.showTimestamps ?? false;
@@ -96,14 +91,6 @@ const shortLogFilePath = computed(() => {
   if (!path) return '';
   return path.split(/[\\/]/).pop() || path;
 });
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / Math.pow(1024, i);
-  return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
 
 function toggleTimestamp(): void {
   const tabId = sessionStore.activeTabId;
@@ -145,11 +132,11 @@ async function toggleLogging() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 24px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 12px;
   background: var(--n-color-embedded);
   border-top: 1px solid var(--n-border-color);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--n-text-color-2);
 }
 
@@ -166,8 +153,8 @@ async function toggleLogging() {
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -189,15 +176,10 @@ async function toggleLogging() {
 }
 
 .session-name {
-  max-width: 150px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.stats {
-  font-family: var(--n-mono-font);
-  margin-right: 4px;
 }
 
 .icon-active {
@@ -208,21 +190,13 @@ async function toggleLogging() {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--n-text-color-3);
-  max-width: 120px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.log-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #d03050;
-  animation: pulse 2s infinite;
-  flex-shrink: 0;
+  margin-right: 8px;
 }
 
 .logging-active .n-button__icon {
