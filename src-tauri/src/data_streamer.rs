@@ -4,11 +4,12 @@
 
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 use embedded_debugger::connection::ConnectionHandle;
 
 use crate::ipc::DataReceivedEvent;
+use crate::state::AppState;
 
 const BATCH_INTERVAL_MS: u64 = 16;
 const MAX_BATCH_SIZE: usize = 16384;
@@ -74,6 +75,18 @@ pub async fn start_batch_streamer(
 }
 
 async fn send_batch(app: &tauri::AppHandle, connection_id: &str, data: &[u8]) {
+    // Log of output data from device
+    let state = app.state::<AppState>();
+    let mut connections = state.connections.write().await;
+    if let Some(ctx) = connections.get_mut(connection_id) {
+        if let Some(logger) = &mut ctx.logger {
+            // Convert bytes to text, clean ANSI/control chars, and log
+            let text = String::from_utf8_lossy(data);
+            let _ = logger.write(&text);
+        }
+    }
+    drop(connections);
+
     let event = DataReceivedEvent {
         session_id: connection_id.to_string(),
         data: data.to_vec(),

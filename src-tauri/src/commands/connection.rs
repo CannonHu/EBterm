@@ -146,9 +146,9 @@ pub async fn write_text(
     let crate::ipc::WriteTextParams { connection_id, text } = params;
     let data = text.into_bytes();
 
-    let connections = state.connections.read().await;
+    let mut connections = state.connections.write().await;
 
-    let ctx = match connections.get(&connection_id) {
+    let ctx = match connections.get_mut(&connection_id) {
         Some(ctx) => ctx,
         None => {
             return err(format!("CONNECTION_NOT_FOUND: Connection '{}' not found", connection_id));

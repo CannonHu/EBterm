@@ -3,6 +3,10 @@
     <div class="left-section">
       <span class="status-dot" :class="connectionStatusClass" />
       <span class="session-name">{{ sessionName }}</span>
+      <span v-if="isLogging" class="log-status" :title="logFilePath">
+        <span class="log-dot"></span>
+        {{ shortLogFilePath }}
+      </span>
     </div>
     <div class="right-section">
       <span class="stats">TX: {{ formattedBytesSent }} | RX: {{ formattedBytesReceived }}</span>
@@ -16,6 +20,17 @@
           <SearchIcon />
         </template>
       </NButton>
+      <NButton
+        size="tiny"
+        quaternary
+        :disabled="!canUseLogging"
+        @click="toggleLogging"
+        :class="{ 'logging-active': isLogging }"
+      >
+        <template #icon>
+          <SaveIcon :class="{ 'icon-active': isLogging }" />
+        </template>
+      </NButton>
     </div>
   </div>
 </template>
@@ -23,7 +38,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { NButton } from 'naive-ui';
-import { Time as ClockIcon, Search as SearchIcon } from '@vicons/carbon';
+import { Time as ClockIcon, Search as SearchIcon, Save as SaveIcon } from '@vicons/carbon';
+import { documentDir } from '@tauri-apps/api/path';
 import { useConnectionStore } from '../stores/connection';
 import { useSessionStore } from '../stores/session';
 import { useTerminalStore } from '../stores/terminal';
@@ -67,6 +83,20 @@ const canUseSearch = computed(() => {
   return !!(activeTab?.sessionId);
 });
 
+const canUseLogging = computed(() => canUseSearch.value);
+
+const isLogging = computed(() => connectionStore.isLogging);
+
+const logFilePath = computed(() => {
+  return connectionStore.loggingStatus.file_path ?? '';
+});
+
+const shortLogFilePath = computed(() => {
+  const path = logFilePath.value;
+  if (!path) return '';
+  return path.split(/[\\/]/).pop() || path;
+});
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -86,6 +116,26 @@ function openSearch(): void {
   const tabId = sessionStore.activeTabId;
   if (tabId) {
     terminalStore.openSearch(tabId);
+  }
+}
+
+async function toggleLogging() {
+  const tabId = sessionStore.activeTabId;
+  if (!tabId) return;
+
+  if (isLogging.value) {
+    await connectionStore.stopLogging(tabId);
+  } else {
+    const activeTab = sessionStore.tabs.find(t => t.id === tabId);
+    const connectionName = activeTab?.title || 'unknown';
+    // 清理文件名中的非法字符
+    const safeName = connectionName.replace(/[<>:"/\\|?*\s]/g, '_');
+    const timeStr = new Date().toISOString().replace(/[:T.]/g, '_').substring(0, 15);
+    const fileName = `${safeName}_${timeStr}.log`;
+    // 保存到用户文档目录，避免dev模式下触发tauri重新构建
+    const docsDir = await documentDir();
+    const filePath = `${docsDir}/${fileName}`;
+    await connectionStore.startLogging(tabId, filePath);
   }
 }
 </script>
@@ -152,5 +202,39 @@ function openSearch(): void {
 
 .icon-active {
   color: #18a058;
+}
+
+.log-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--n-text-color-3);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d03050;
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+.logging-active .n-button__icon {
+  color: #d03050;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 </style>

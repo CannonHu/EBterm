@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { ConnectionParams, ConnectionStatus, ConnectionStats } from '../types/ipc';
+import type { ConnectionParams, ConnectionStatus, ConnectionStats, LoggingStatus } from '../types/ipc';
 import { tauriInvoke } from '../api/tauri';
 import { useSessionStore } from './session';
 
@@ -15,6 +15,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const tabConfigs = ref<Map<string, ConnectionParams>>(new Map());
   const tabStats = ref<Map<string, ConnectionStats>>(new Map());
   const tabErrors = ref<Map<string, string>>(new Map());
+  const tabLoggingStatuses = ref<Map<string, LoggingStatus>>(new Map());
 
   const status = computed(() => {
     const activeTabId = sessionStore.activeTabId;
@@ -41,6 +42,14 @@ export const useConnectionStore = defineStore('connection', () => {
   const isConnected = computed(() => status.value === 'connected');
   const isConnecting = computed(() => status.value === 'connecting');
   const hasError = computed(() => status.value === 'error');
+
+  const loggingStatus = computed(() => {
+    const activeTabId = sessionStore.activeTabId;
+    const defaultStatus: LoggingStatus = { enabled: false, bytes_logged_input: 0, bytes_logged_output: 0 };
+    return activeTabId ? tabLoggingStatuses.value.get(activeTabId) ?? defaultStatus : defaultStatus;
+  });
+
+  const isLogging = computed(() => loggingStatus.value.enabled);
 
   function getTabStatus(tabId: string): ConnectionStatus {
     return tabStatuses.value.get(tabId) ?? 'disconnected';
@@ -75,6 +84,15 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  function getTabLoggingStatus(tabId: string): LoggingStatus {
+    const defaultStatus: LoggingStatus = { enabled: false, bytes_logged_input: 0, bytes_logged_output: 0 };
+    return tabLoggingStatuses.value.get(tabId) ?? defaultStatus;
+  }
+
+  function setTabLoggingStatus(tabId: string, status: LoggingStatus): void {
+    tabLoggingStatuses.value.set(tabId, status);
+  }
+
   function removeTab(tabId: string): void {
     const tab = sessionStore.tabs.find(t => t.id === tabId);
     const sessionId = tab?.sessionId;
@@ -85,6 +103,7 @@ export const useConnectionStore = defineStore('connection', () => {
     tabConfigs.value.delete(tabId);
     tabStats.value.delete(tabId);
     tabErrors.value.delete(tabId);
+    tabLoggingStatuses.value.delete(tabId);
   }
 
   async function connect(params: ConnectionParams, tabId?: string) {
@@ -115,6 +134,12 @@ export const useConnectionStore = defineStore('connection', () => {
     if (!sessionId) return;
 
     tabErrors.value.delete(tabId);
+    // 停止日志记录
+    const loggingStatus = getTabLoggingStatus(tabId);
+    if (loggingStatus.enabled) {
+      await tauriInvoke<void>('stop_logging', { connectionId: sessionId });
+      setTabLoggingStatus(tabId, { ...loggingStatus, enabled: false });
+    }
     const result = await tauriInvoke<void>('disconnect', { connectionId: sessionId });
     if (result.success) {
       tabStatuses.value.set(tabId, 'disconnected');
@@ -140,6 +165,47 @@ export const useConnectionStore = defineStore('connection', () => {
 
   async function writeText(sessionId: string, text: string) {
     return await tauriInvoke<void>('write_text', { params: { connection_id: sessionId, text } });
+  }
+
+  async function startLogging(tabId: string, filePath: string) {
+    const tab = sessionStore.tabs.find(t => t.id === tabId);
+    const sessionId = tab?.sessionId;
+    if (!sessionId) return { success: false, error: 'No active session' };
+
+    const result = await tauriInvoke<void>('start_logging', {
+      connectionId: sessionId,
+      filePath: filePath
+    });
+
+    if (result.success) {
+      setTabLoggingStatus(tabId, {
+        enabled: true,
+        file_path: filePath,
+        bytes_logged_input: 0,
+        bytes_logged_output: 0,
+        started_at: new Date().toISOString()
+      });
+    }
+
+    return result;
+  }
+
+  async function stopLogging(tabId: string) {
+    const tab = sessionStore.tabs.find(t => t.id === tabId);
+    const sessionId = tab?.sessionId;
+    if (!sessionId) return { success: false, error: 'No active session' };
+
+    const result = await tauriInvoke<void>('stop_logging', { connectionId: sessionId });
+
+    if (result.success) {
+      const currentStatus = getTabLoggingStatus(tabId);
+      setTabLoggingStatus(tabId, {
+        ...currentStatus,
+        enabled: false
+      });
+    }
+
+    return result;
   }
 
   // Methods that work with sessionId instead of tabId (for event handlers)
@@ -194,6 +260,12 @@ export const useConnectionStore = defineStore('connection', () => {
     connect,
     disconnect,
     getStatus,
-    writeText
+    writeText,
+    loggingStatus,
+    isLogging,
+    getTabLoggingStatus,
+    setTabLoggingStatus,
+    startLogging,
+    stopLogging
   };
 });

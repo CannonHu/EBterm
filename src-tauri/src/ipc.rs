@@ -6,9 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 // Re-export core types from lib for convenience
-pub use embedded_debugger::connection::types::{
-    ConnectionStatus, SerialConfig, TelnetConfig,
-};
+pub use embedded_debugger::connection::types::{ConnectionStatus, SerialConfig, TelnetConfig};
 
 /// IPC error type
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,8 +73,7 @@ pub enum LogDirection {
 pub struct LoggingStatus {
     pub enabled: bool,
     pub file_path: Option<String>,
-    pub bytes_logged_input: u64,
-    pub bytes_logged_output: u64,
+    pub bytes_logged: u64,
     pub started_at: Option<String>,
 }
 
@@ -93,7 +90,7 @@ pub struct CommandInfo {
 /// Data received event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataReceivedEvent {
-    pub session_id: String,  // 改名为 session_id 以匹配前端期望
+    pub session_id: String, // 改名为 session_id 以匹配前端期望
     pub data: Vec<u8>,
 }
 
