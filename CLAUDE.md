@@ -1,14 +1,14 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-**embedded-debugger** is a cross-platform embedded board debugging tool built with Tauri (Rust backend + Vue 3 frontend). It supports serial port and Telnet connections.
+**toy-term** is a cross-platform terminal debugging tool built with Tauri (Rust backend + Vue 3 frontend). Supports serial port and Telnet connections, with profile management for quick connection switching.
 
-- **Backend**: Rust with Tokio, serial2-tokio, layered architecture (Connection → Session → IPC)
+- **Backend**: Rust with Tokio, serial2-tokio, layered architecture (Connection → IPC)
 - **Frontend**: Vue 3 + TypeScript + Naive UI + xterm.js
-- **Architecture**: Tab = Connection = Session (1:1 mapping)
+- **Architecture**: Tab = Connection = Context (1:1 mapping)
 
 ## Build Commands
 
@@ -23,17 +23,11 @@ cargo test
 
 # Run tests for a specific module
 cargo test connection::tests
-cargo test session::tests
 cargo test logger::tests
 cargo test command::tests
 
 # Run a single test by name
 cargo test test_connection_error_open_failed
-
-# Run integration tests only
-cargo test --test command_integration
-cargo test --test logger_integration
-cargo test --test telnet_integration
 
 # Run with output visible
 cargo test -- --nocapture
@@ -90,7 +84,7 @@ cd src-tauri && cargo tauri build
 - Use `#[from]` for automatic error conversion where appropriate
 
 **Naming**:
-- Modules: `snake_case` (connection, session_manager)
+- Modules: `snake_case` (connection, command)
 - Types/Structs: `PascalCase` (ConnectionError, SerialConfig)
 - Constants: `SCREAMING_SNAKE_CASE` (EVENT_PREFIX, DEFAULT_TIMEOUT)
 - Methods: `snake_case` (connect, read, write)
@@ -138,25 +132,18 @@ fn test_feature_scenario() {
 
 ## High-Level Architecture
 
-### Backend Layering (Connection → Session → IPC)
+### Backend Layering (Connection → IPC)
 
 ```
 src/
 ├── connection/          # Low-level connection management
 │   ├── mod.rs          # ConnectionError + re-exports
-│   ├── traits.rs       # Connection trait definition
-│   ├── types.rs        # Config/Status/Stats types
+│   ├── types.rs        # Connection trait + config/status/stats types
 │   ├── serial.rs       # SerialConnection impl
-│   └── telnet.rs       # TelnetConnection impl
-├── session/            # Session lifecycle management
-│   ├── mod.rs          # SessionError + re-exports
-│   ├── state.rs        # SessionState enum
-│   ├── types.rs        # Session types
-│   ├── manager.rs      # SessionManager impl
-│   └── connection_registry.rs  # Connection-to-Session mapping
+│   ├── telnet.rs       # TelnetConnection impl
+│   └── discovery.rs    # Serial port auto-discovery
 ├── logger/             # Logging subsystem
 │   ├── mod.rs          # LoggerError + re-exports
-│   ├── traits.rs       # Logger trait
 │   └── file.rs         # FileLogger impl
 ├── command/            # Command file parsing
 │   ├── mod.rs          # CommandError + re-exports
@@ -170,13 +157,13 @@ src/
 ```
 src-tauri/src/
 ├── main.rs             # Tauri app entry, command handlers
-├── state.rs            # AppState (SessionManager + Logger registry)
-├── ipc.rs              # IPC type definitions (CommandRequest, CommandResponse)
+├── state.rs            # AppState (Connection registry + Command manager)
+├── ipc.rs              # IPC type definitions
+├── connection_context.rs # Per-connection context (connection + stream + logger)
 ├── data_streamer.rs    # Background task for streaming connection data to frontend
 └── commands/           # Tauri command handlers
     ├── mod.rs
     ├── connection.rs   # connect, disconnect, write_data, get_status
-    ├── session.rs      # create_session, close_session, list_sessions
     ├── logging.rs      # start_logging, stop_logging, get_log_status
     └── command.rs      # execute_command, load_command_file
 ```
@@ -190,15 +177,23 @@ frontend/src/
 │   ├── TabBar.vue      # Tab management with connection status
 │   ├── TerminalPane.vue # Per-tab container with polling
 │   ├── Terminal.vue    # xterm.js wrapper
-│   ├── ConfigPanel.vue # Floating connection config
+│   ├── ConfigPanel.vue # Connection config dialog
 │   ├── SearchBar.vue   # Terminal search
-│   └── StatusBar.vue   # Connection status & stats
+│   ├── StatusBar.vue   # Connection status & stats
+│   ├── ProfileSelectorDialog.vue # Connection profile selection
+│   └── SaveProfileDialog.vue # Save current connection as profile
 ├── stores/             # Pinia stores
-│   ├── session.ts      # Tab + session management
+│   ├── session.ts      # Tab + connection management
 │   ├── terminal.ts     # Terminal UI state + data buffers
-│   └── connection.ts   # Connection state per session
+│   ├── connection.ts   # Connection state per tab
+│   └── ui.ts           # Global UI state
 ├── composables/        # Reusable logic
-│   └── useTauriEvents.ts # Tauri event listeners
+│   ├── useTauriEvents.ts # Tauri event listeners
+│   └── useTerminal.ts  # Terminal operations
+├── services/
+│   └── profileStorage.ts # Connection profile persistence
+├── router/
+│   └── index.ts        # App router
 ├── types/              # TypeScript types
 │   └── ipc.ts          # IPC type definitions
 └── api/                # Tauri command wrappers
@@ -207,33 +202,43 @@ frontend/src/
 
 ### Key Design Decisions
 
-1. **Tab = Connection = Session (1:1 mapping)**: Each tab represents one connection/session. Simplifies mental model and avoids synchronization issues.
-
-2. **Dual ID System**: Frontend tabs use `tabId` (UUID), backend sessions use `sessionId`. `tabId` exists before connection; `sessionId` assigned after successful connection.
-
-3. **State Isolation by Session**: Connection state, terminal UI state, and stats are stored in Maps keyed by `sessionId` to prevent cross-tab pollution.
-
-4. **16ms Data Polling**: TerminalPane polls data buffers every 16ms and writes to xterm.js in batches, reducing DOM operations.
-
-5. **Event-Driven Architecture**: Backend emits events (`data_received`, `status_changed`) which frontend listens to via `useTauriEvents` composable.
+1. **Simplified Architecture**: Removed Session layer for lower overhead, now use direct Connection → Context mapping.
+2. **Tab = Connection = Context (1:1 mapping)**: Each tab represents one connection context. Simplifies mental model and avoids synchronization issues.
+3. **Serial Auto-Discovery**: Automatically scans for available serial ports across all platforms.
+4. **Profile Management**: Save and load connection configurations for quick access to frequently used connections.
+5. **State Isolation**: Connection state, terminal UI state, and stats are isolated per tab to prevent cross-tab pollution.
+6. **16ms Data Polling**: TerminalPane polls data buffers every 16ms and writes to xterm.js in batches, reducing DOM operations.
+7. **Event-Driven Architecture**: Backend emits events (`data_received`, `status_changed`) which frontend listens to via `useTauriEvents` composable.
 
 ## Dependencies
 
 ### Rust Backend
-- `tokio` - Async runtime
-- `serial2-tokio` - Cross-platform serial port
-- `mini-telnet` - Telnet client
-- `thiserror` - Error derive macros
-- `serde` / `serde_json` - Serialization
-- `tauri` - Desktop app framework
+| Crate | Purpose |
+|-------|---------|
+| `tokio` | Async runtime + TCP stream for Telnet |
+| `serial2-tokio` | Cross-platform serial port |
+| `thiserror` | Error handling |
+| `serde` / `serde_json` / `toml` | Serialization |
+| `async-trait` | Async trait support |
+| `tracing` | Structured logging |
+| `uuid` | Unique ID generation |
+| `regex` / `once_cell` | Pattern matching + lazy static |
+
+> Telnet实现使用原生tokio TcpStream（无额外Telnet库依赖），适配嵌入式设备常用的裸TCP透传模式
 
 ### Frontend
-- `vue` 3.4+ with Composition API
-- `pinia` - State management
-- `xterm.js` - Terminal emulator
-- `naive-ui` - Component library
-- `@tauri-apps/api` - Tauri IPC
-- **BUN as JavaScript runtime** (NOT npm/npx)
+| Package | Purpose |
+|---------|---------|
+| `vue` 3.4+ | UI framework (Composition API) |
+| `pinia` | State management |
+| `vue-router` | Client-side routing |
+| `naive-ui` | Component library |
+| `@vueuse/core` | Vue composables collection |
+| `xterm.js` | Terminal emulator |
+| `xterm-addon-fit` / `xterm-addon-search` | xterm.js extensions |
+| `@tauri-apps/api` | Tauri IPC |
+| `@tauri-apps/plugin-dialog` / `plugin-fs` | Tauri system plugins |
+| **Bun** | JavaScript runtime (no npm/yarn)
 
 ## Important Constraints
 

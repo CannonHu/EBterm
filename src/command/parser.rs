@@ -15,8 +15,6 @@ pub struct ParsedCommand {
     pub content: String,
     /// Optional description from inline comment
     pub description: Option<String>,
-    /// Raw line content for preview
-    pub raw_line: String,
 }
 
 impl ParsedCommand {
@@ -37,12 +35,6 @@ pub trait CommandParser: Send + Sync {
 
     /// Parse command content from a string
     fn parse_string(&self, content: &str) -> Result<Vec<ParsedCommand>, CommandError>;
-
-    /// Check if a file is valid command file format
-    fn is_valid_format(&self, path: &Path) -> bool;
-
-    /// Get supported file extensions
-    fn supported_extensions(&self) -> &[&str];
 }
 
 /// Default command file parser implementation
@@ -61,14 +53,6 @@ impl Default for DefaultCommandParser {
 }
 
 impl DefaultCommandParser {
-    /// Create a new parser with custom configuration
-    pub fn new(max_file_size: u64, comment_prefixes: Vec<String>) -> Self {
-        Self {
-            max_file_size,
-            comment_prefixes,
-        }
-    }
-
     /// Extract comment from a line if present
     fn extract_comment(&self, line: &str) -> (String, Option<String>) {
         for prefix in &self.comment_prefixes {
@@ -153,24 +137,10 @@ impl CommandParser for DefaultCommandParser {
                 line_number,
                 content: content_part.clone(),
                 description,
-                raw_line: line.to_string(),
             });
         }
 
         Ok(commands)
-    }
-
-    fn is_valid_format(&self, path: &Path) -> bool {
-        if let Some(ext) = path.extension() {
-            let ext_str = ext.to_string_lossy().to_lowercase();
-            self.supported_extensions().iter().any(|&e| e == ext_str)
-        } else {
-            false
-        }
-    }
-
-    fn supported_extensions(&self) -> &[&str] {
-        &["txt", "cmd", "command"]
     }
 }
 
@@ -237,35 +207,11 @@ mod tests {
     }
 
     #[test]
-    fn test_is_valid_format() {
-        let parser = DefaultCommandParser::default();
-
-        assert!(parser.is_valid_format(std::path::Path::new("test.txt")));
-        assert!(parser.is_valid_format(std::path::Path::new("test.cmd")));
-        assert!(parser.is_valid_format(std::path::Path::new("test.command")));
-        assert!(parser.is_valid_format(std::path::Path::new("test.TXT")));
-        assert!(parser.is_valid_format(std::path::Path::new("test.CMD")));
-
-        assert!(!parser.is_valid_format(std::path::Path::new("test.exe")));
-        assert!(!parser.is_valid_format(std::path::Path::new("test")));
-        assert!(!parser.is_valid_format(std::path::Path::new("test.rs")));
-    }
-
-    #[test]
-    fn test_supported_extensions() {
-        let parser = DefaultCommandParser::default();
-        let extensions = parser.supported_extensions();
-
-        assert_eq!(extensions, &["txt", "cmd", "command"]);
-    }
-
-    #[test]
     fn test_parsed_command_preview() {
         let cmd = ParsedCommand {
             line_number: 1,
             content: "a very long command string that exceeds limit".to_string(),
             description: None,
-            raw_line: "test line".to_string(),
         };
 
         let preview = cmd.preview(20);

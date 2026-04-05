@@ -9,32 +9,6 @@ use tokio::sync::Mutex;
 
 use super::ConnectionError;
 
-/// Unique identifier for a connection
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConnectionId(String);
-
-impl ConnectionId {
-    /// Create a new ConnectionId
-    pub fn new() -> Self {
-        Self(uuid::Uuid::new_v4().to_string())
-    }
-
-    /// Create from existing string
-    pub fn from_string(s: String) -> Self {
-        Self(s)
-    }
-
-    /// Get inner string
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Default for ConnectionId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 /// Handle to a connection that can be shared across async contexts
 pub type ConnectionHandle = Arc<Mutex<Box<dyn Connection>>>;

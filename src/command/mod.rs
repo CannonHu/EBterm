@@ -93,19 +93,6 @@ impl CommandError {
             CommandError::Generic(_) => "COMMAND_GENERIC_ERROR",
         }
     }
-
-    /// Get file path if available
-    pub fn path(&self) -> Option<&str> {
-        match self {
-            CommandError::ParseFailed { path, .. } => Some(path),
-            CommandError::ReadFailed { path, .. } => Some(path),
-            CommandError::InvalidFormat { path, .. } => Some(path),
-            CommandError::FileNotFound { path } => Some(path),
-            CommandError::EmptyFile { path } => Some(path),
-            CommandError::TooLarge { path, .. } => Some(path),
-            CommandError::InvalidSyntax { .. } | CommandError::Generic(_) => None,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -125,7 +112,6 @@ mod tests {
         assert!(msg.contains("Unexpected token"));
         assert!(msg.contains("Failed to parse"));
         assert_eq!(err.code(), "COMMAND_PARSE_FAILED");
-        assert_eq!(err.path(), Some("/commands/test.cmd"));
     }
 
     #[test]
@@ -139,7 +125,6 @@ mod tests {
         assert!(msg.contains("Permission denied"));
         assert!(msg.contains("Failed to read"));
         assert_eq!(err.code(), "COMMAND_READ_FAILED");
-        assert_eq!(err.path(), Some("/commands/script.cmd"));
     }
 
     #[test]
@@ -177,7 +162,6 @@ mod tests {
         assert!(msg.contains("/commands/missing.cmd"));
         assert!(msg.contains("not found"));
         assert_eq!(err.code(), "COMMAND_FILE_NOT_FOUND");
-        assert_eq!(err.path(), Some("/commands/missing.cmd"));
     }
 
     #[test]
@@ -223,7 +207,6 @@ mod tests {
         };
         let msg = err.to_string();
         assert!(msg.contains("not found"));
-        assert_eq!(err.path(), Some(""));
     }
 
     #[test]
@@ -249,7 +232,8 @@ mod tests {
         let err = CommandError::FileNotFound {
             path: long_path.clone(),
         };
-        assert_eq!(err.path(), Some(long_path.as_str()));
+        let msg = err.to_string();
+        assert!(msg.contains(&long_path));
     }
 
     #[test]
@@ -340,75 +324,6 @@ mod tests {
         assert!(msg.contains(&u64::MAX.to_string()));
     }
 
-    // Path extraction tests
-
-    #[test]
-    fn test_path_extraction_parse_failed() {
-        let err = CommandError::ParseFailed {
-            path: "/path/to/cmd".to_string(),
-            reason: "error".to_string(),
-        };
-        assert_eq!(err.path(), Some("/path/to/cmd"));
-    }
-
-    #[test]
-    fn test_path_extraction_read_failed() {
-        let err = CommandError::ReadFailed {
-            path: "/path/to/cmd".to_string(),
-            reason: "error".to_string(),
-        };
-        assert_eq!(err.path(), Some("/path/to/cmd"));
-    }
-
-    #[test]
-    fn test_path_extraction_invalid_format() {
-        let err = CommandError::InvalidFormat {
-            path: "/path/to/cmd".to_string(),
-            detail: "error".to_string(),
-        };
-        assert_eq!(err.path(), Some("/path/to/cmd"));
-    }
-
-    #[test]
-    fn test_path_extraction_file_not_found() {
-        let err = CommandError::FileNotFound {
-            path: "/path/to/cmd".to_string(),
-        };
-        assert_eq!(err.path(), Some("/path/to/cmd"));
-    }
-
-    #[test]
-    fn test_path_extraction_empty_file() {
-        let err = CommandError::EmptyFile {
-            path: "/path/to/cmd".to_string(),
-        };
-        assert_eq!(err.path(), Some("/path/to/cmd"));
-    }
-
-    #[test]
-    fn test_path_extraction_too_large() {
-        let err = CommandError::TooLarge {
-            path: "/path/to/cmd".to_string(),
-            size: 1000,
-            limit: 500,
-        };
-        assert_eq!(err.path(), Some("/path/to/cmd"));
-    }
-
-    #[test]
-    fn test_path_extraction_invalid_syntax() {
-        let err = CommandError::InvalidSyntax {
-            line: 10,
-            detail: "error".to_string(),
-        };
-        assert_eq!(err.path(), None);
-    }
-
-    #[test]
-    fn test_path_extraction_generic() {
-        let err = CommandError::Generic("error".to_string());
-        assert_eq!(err.path(), None);
-    }
 
     // Debug format test
 

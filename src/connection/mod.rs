@@ -120,24 +120,6 @@ impl ConnectionError {
         }
     }
 
-    /// Get the port name if available
-    pub fn port(&self) -> Option<&str> {
-        match self {
-            ConnectionError::OpenFailed { port, .. } => Some(port),
-            ConnectionError::ReadFailed { port, .. } => Some(port),
-            ConnectionError::WriteFailed { port, .. } => Some(port),
-            ConnectionError::Timeout { port, .. } => Some(port),
-            ConnectionError::AlreadyExists { port } => Some(port),
-            ConnectionError::NotFound { port } => Some(port),
-            ConnectionError::InvalidPort(port) => Some(port),
-            ConnectionError::NotConnected
-            | ConnectionError::Telnet(_)
-            | ConnectionError::Serial(_)
-            | ConnectionError::Io(_)
-            | ConnectionError::InvalidBaudRate(_)
-            | ConnectionError::Generic(_) => None,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -162,7 +144,6 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("not connected"));
         assert_eq!(err.code(), "CONNECTION_NOT_CONNECTED");
-        assert_eq!(err.port(), None);
     }
 
     #[test]
@@ -248,7 +229,6 @@ mod tests {
         assert!(msg.contains("Serial"));
         assert!(msg.contains("Port busy"));
         assert_eq!(err.code(), "CONNECTION_SERIAL_ERROR");
-        assert_eq!(err.port(), None);
     }
 
     #[test]
@@ -258,7 +238,6 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("I/O error"));
         assert_eq!(err.code(), "CONNECTION_IO_ERROR");
-        assert_eq!(err.port(), None);
     }
 
     #[test]
@@ -345,87 +324,10 @@ mod tests {
     }
 
     #[test]
-    fn test_port_extraction_open_failed() {
-        let err = ConnectionError::OpenFailed {
-            port: "/dev/ttyUSB0".to_string(),
-            reason: "error".to_string(),
-        };
-        assert_eq!(err.port(), Some("/dev/ttyUSB0"));
-    }
-
-    #[test]
-    fn test_port_extraction_read_failed() {
-        let err = ConnectionError::ReadFailed {
-            port: "/dev/ttyS0".to_string(),
-            reason: "error".to_string(),
-        };
-        assert_eq!(err.port(), Some("/dev/ttyS0"));
-    }
-
-    #[test]
-    fn test_port_extraction_write_failed() {
-        let err = ConnectionError::WriteFailed {
-            port: "COM3".to_string(),
-            reason: "error".to_string(),
-        };
-        assert_eq!(err.port(), Some("COM3"));
-    }
-
-    #[test]
-    fn test_port_extraction_timeout() {
-        let err = ConnectionError::Timeout {
-            port: "/dev/ttyACM0".to_string(),
-            timeout_ms: 1000,
-        };
-        assert_eq!(err.port(), Some("/dev/ttyACM0"));
-    }
-
-    #[test]
-    fn test_port_extraction_invalid_port() {
-        let err = ConnectionError::InvalidPort("invalid".to_string());
-        assert_eq!(err.port(), Some("invalid"));
-    }
-
-    #[test]
-    fn test_port_extraction_already_exists() {
-        let err = ConnectionError::AlreadyExists {
-            port: "test".to_string(),
-        };
-        assert_eq!(err.port(), Some("test"));
-    }
-
-    #[test]
-    fn test_port_extraction_not_found() {
-        let err = ConnectionError::NotFound {
-            port: "test".to_string(),
-        };
-        assert_eq!(err.port(), Some("test"));
-    }
-
-    #[test]
-    fn test_port_extraction_invalid_baud_rate() {
-        let err = ConnectionError::InvalidBaudRate(9600);
-        assert_eq!(err.port(), None);
-    }
-
-    #[test]
-    fn test_port_extraction_telnet() {
-        let err = ConnectionError::Telnet("error".to_string());
-        assert_eq!(err.port(), None);
-    }
-
-    #[test]
-    fn test_port_extraction_generic() {
-        let err = ConnectionError::Generic("error".to_string());
-        assert_eq!(err.port(), None);
-    }
-
-    #[test]
     fn test_empty_port_name() {
         let err = ConnectionError::InvalidPort("".to_string());
         let msg = err.to_string();
         assert!(msg.contains("Invalid port"));
-        assert_eq!(err.port(), Some(""));
     }
 
     #[test]
@@ -449,7 +351,8 @@ mod tests {
     fn test_very_long_port_name() {
         let long_port = "a".repeat(1000);
         let err = ConnectionError::InvalidPort(long_port.clone());
-        assert_eq!(err.port(), Some(long_port.as_str()));
+        let msg = err.to_string();
+        assert!(msg.contains(&long_port));
     }
 
     #[test]
