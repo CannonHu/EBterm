@@ -61,14 +61,6 @@ export interface LoggingStatus {
   started_at?: string;
 }
 
-export interface CommandInfo {
-  index: number;
-  name: string;
-  description?: string;
-  content_preview: string;
-  line_number: number;
-}
-
 export interface SerialPortInfo {
   port_name: string;
   port_type: string;

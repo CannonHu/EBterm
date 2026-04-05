@@ -1,17 +1,36 @@
 <script setup lang="ts">
-import { ref, h } from 'vue'
+import { ref, h, computed } from 'vue'
 import { useSessionStore } from '../stores/session'
 import { useTerminalStore } from '../stores/terminal'
 import { useConnectionStore } from '../stores/connection'
+import { useCommandPanelStore } from '../stores/commandPanel'
 import { NButton, NTabs, NTabPane, NDropdown, NInput, NIcon, NModal, useMessage } from 'naive-ui'
-import { Add, Close, Edit } from '@vicons/carbon'
+import { Add, Close, Edit, Terminal } from '@vicons/carbon'
 import ProfileSelectorDialog from '../components/ProfileSelectorDialog.vue'
 import type { SavedProfile } from '../types/ipc'
 
 const sessionStore = useSessionStore()
 const terminalStore = useTerminalStore()
 const connectionStore = useConnectionStore()
+const commandPanelStore = useCommandPanelStore()
 const message = useMessage()
+
+// Computed for command panel state
+const isCommandPanelOpen = computed(() => {
+  const tabId = sessionStore.activeTabId
+  if (!tabId) return false
+  return commandPanelStore.getTabState(tabId).isOpen
+})
+
+// Toggle command panel
+function toggleCommandPanel() {
+  const tabId = sessionStore.activeTabId
+  if (!tabId) {
+    message.warning('Please select a tab first')
+    return
+  }
+  commandPanelStore.togglePanel(tabId)
+}
 
 const showRenameModal = ref(false)
 const renameTabId = ref<string | null>(null)
@@ -196,6 +215,20 @@ function handleOpenConfigPanel() {
     <div class="tabs-placeholder" v-else>
       <!-- Empty state when no tabs -->
     </div>
+
+    <n-button
+      size="small"
+      quaternary
+      circle
+      class="command-panel-btn"
+      :type="isCommandPanelOpen ? 'primary' : 'default'"
+      @click="toggleCommandPanel"
+      title="Command Panel"
+    >
+      <template #icon>
+        <n-icon><Terminal /></n-icon>
+      </template>
+    </n-button>
 
     <n-dropdown :options="connectionOptions" trigger="click" placement="bottom-end" @select="handleAdd">
       <n-button size="small" quaternary circle class="add-btn">

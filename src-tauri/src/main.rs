@@ -8,7 +8,6 @@ mod state;
 
 use tauri::Manager;
 
-use commands::command::*;
 use commands::connection::*;
 use commands::logging::*;
 use state::AppState;
@@ -33,10 +32,6 @@ fn main() {
             stop_logging,
             get_logging_status,
             log_data,
-            load_command_file,
-            get_loaded_commands,
-            execute_command_by_index,
-            send_raw_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

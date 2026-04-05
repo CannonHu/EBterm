@@ -4,7 +4,6 @@
 
 pub mod connection;
 pub mod logging;
-pub mod command;
 
 use serde::{Deserialize, Serialize};
 

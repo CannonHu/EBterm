@@ -15,9 +15,6 @@ pub enum Error {
     #[error("Logger error: {0}")]
     Logger(#[from] crate::logger::LoggerError),
 
-    /// Command-related errors
-    #[error("Command error: {0}")]
-    Command(#[from] crate::command::CommandError),
 
     /// IO errors
     #[error("IO error: {0}")]
@@ -38,7 +35,6 @@ impl Error {
         match self {
             Error::Connection(_) => "CONNECTION_ERROR".to_string(),
             Error::Logger(_) => "LOGGER_ERROR".to_string(),
-            Error::Command(_) => "COMMAND_ERROR".to_string(),
             Error::Io(_) => "IO_ERROR".to_string(),
             Error::Serialization(_) => "SERIALIZATION_ERROR".to_string(),
             Error::Generic(_) => "GENERIC_ERROR".to_string(),

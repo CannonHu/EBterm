@@ -9,7 +9,6 @@
 
 pub mod connection;
 pub mod logger;
-pub mod command;
 pub mod error;
 
 pub use error::{Error, Result};

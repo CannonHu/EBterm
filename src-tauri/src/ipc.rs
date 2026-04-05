@@ -77,16 +77,6 @@ pub struct LoggingStatus {
     pub started_at: Option<String>,
 }
 
-/// Command information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CommandInfo {
-    pub index: usize,
-    pub name: String,
-    pub description: Option<String>,
-    pub content_preview: String,
-    pub line_number: usize,
-}
-
 /// Data received event payload
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataReceivedEvent {
