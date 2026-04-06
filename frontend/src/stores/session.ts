@@ -1,42 +1,19 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { TabState, SessionInfo } from '../types/ipc';
-import { tauriInvoke } from '../api/tauri';
+import type { TabState } from '../types/ipc';
 import { useTerminalStore } from './terminal';
 import { useConnectionStore } from './connection';
 
 export const useSessionStore = defineStore('session', () => {
-  const sessions = ref<SessionInfo[]>([]);
-  const activeSessionId = ref<string | null>(null);
-
-  const activeSession = computed(() => sessions.value.find(s => s.id === activeSessionId.value) || null);
-
-  async function loadSessions() {
-    const result = await tauriInvoke<SessionInfo[]>('list_sessions');
-    if (result.success && result.data) {
-      sessions.value = result.data;
-    }
-  }
-
-  async function renameSession(id: string, name: string) {
-    const result = await tauriInvoke<void>('rename_session', { session_id: id, new_name: name });
-    if (result.success) {
-      const session = sessions.value.find(s => s.id === id);
-      if (session) {
-        session.name = name;
-      }
-    }
-    return result;
-  }
-
-  function setActiveSession(id: string | null) {
-    activeSessionId.value = id;
-  }
-
   const tabs = ref<TabState[]>([]);
   const activeTabId = ref<string | null>(null);
 
   const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value) || null);
+
+  const activeTabHasConnection = computed(() => {
+    const tab = activeTab.value;
+    return !!tab?.sessionId;
+  });
 
   function addTab(): string {
     const id = crypto.randomUUID();
@@ -73,7 +50,6 @@ export const useSessionStore = defineStore('session', () => {
         const newIndex = Math.min(index, tabs.value.length - 1);
         setActiveTab(tabs.value[newIndex].id);
       } else {
-        // Auto create new tab when last one is closed
         addTab();
       }
     }
@@ -119,15 +95,10 @@ export const useSessionStore = defineStore('session', () => {
   addTab();
 
   return {
-    sessions,
-    activeSessionId,
-    activeSession,
-    loadSessions,
-    renameSession,
-    setActiveSession,
     tabs,
     activeTabId,
     activeTab,
+    activeTabHasConnection,
     addTab,
     closeTab,
     setActiveTab,

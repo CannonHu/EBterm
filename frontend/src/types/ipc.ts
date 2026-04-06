@@ -40,17 +40,6 @@ export type ConnectionParams =
   | { type: 'serial' } & SerialParams
   | { type: 'telnet' } & TelnetParams;
 
-export interface SessionInfo {
-  id: string;
-  name: string;
-  connection_type: string;
-  status: ConnectionStatus;
-  created_at: string;
-  last_activity?: string;
-  logging_enabled: boolean;
-  log_file_path?: string;
-}
-
 export type LogDirection = 'input' | 'output';
 
 export interface LoggingStatus {

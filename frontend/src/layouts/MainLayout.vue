@@ -13,19 +13,12 @@ const terminalStore = useTerminalStore()
 const { cleanup } = useTauriEvents()
 const activeTabId = computed(() => sessionStore.activeTabId)
 
-// 检查当前标签页是否已连接（有 sessionId）
-function canOpenSearch(): boolean {
-  if (!activeTabId.value) return false
-  const activeTab = sessionStore.tabs.find(t => t.id === activeTabId.value)
-  return !!(activeTab?.sessionId)
-}
-
 // 全局快捷键：Ctrl/Cmd + F 打开搜索
 const handleKeydown = (e: KeyboardEvent) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
     e.preventDefault()
-    if (canOpenSearch()) {
-      terminalStore.openSearch(activeTabId.value!)
+    if (sessionStore.activeTabHasConnection && activeTabId.value) {
+      terminalStore.openSearch(activeTabId.value)
     }
   }
 }

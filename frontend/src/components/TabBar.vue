@@ -41,7 +41,6 @@ const dropdownY = ref(0)
 const contextTabId = ref<string | null>(null)
 
 const showProfileSelector = ref(false)
-const isConnectingFromProfile = ref(false)
 
 const connectionOptions = [
   { label: 'Serial Port', key: 'serial' },
@@ -139,8 +138,6 @@ function cancelRename() {
 }
 
 async function handleProfileConnect(profile: SavedProfile) {
-  isConnectingFromProfile.value = true
-  
   try {
     // 1. Create new tab
     const newTabId = sessionStore.addTab()
@@ -163,10 +160,7 @@ async function handleProfileConnect(profile: SavedProfile) {
   } catch (error) {
     console.error('Profile connection error:', error)
     message.error(`Connection error: ${error}`)
-    // Reset state and close dialog on failure
     showProfileSelector.value = false
-  } finally {
-    isConnectingFromProfile.value = false
   }
 }
 

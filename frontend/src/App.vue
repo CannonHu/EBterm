@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { darkTheme } from 'naive-ui'
-
-const theme = computed(() => {
-  return null
-})
 
 const themeOverrides = {
   common: {

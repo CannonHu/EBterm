@@ -76,7 +76,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { NButton, NIcon, NEmpty, useMessage } from 'naive-ui';
-import { ChevronRight, ChevronLeft, Close, FolderOpen, Send } from '@vicons/carbon';
+import { ChevronRight, FolderOpen, Send } from '@vicons/carbon';
 import { useCommandPanelStore } from '../stores/commandPanel';
 import { useSessionStore } from '../stores/session';
 
@@ -203,8 +203,8 @@ watch(() => sessionStore.tabs.find(t => t.id === props.tabId), (tab) => {
 .command-panel {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border-color);
-  background: var(--bg-color);
+  border-left: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-color, #ffffff);
   position: relative;
   height: 100%;
 }
@@ -214,7 +214,7 @@ watch(() => sessionStore.tabs.find(t => t.id === props.tabId), (tab) => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
 }
 
 .panel-title {
@@ -231,7 +231,7 @@ watch(() => sessionStore.tabs.find(t => t.id === props.tabId), (tab) => {
   display: flex;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
 }
 
 .panel-content {
@@ -258,12 +258,12 @@ watch(() => sessionStore.tabs.find(t => t.id === props.tabId), (tab) => {
   font-family: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.5;
-  background: var(--bg-color);
-  color: var(--text-color);
+  background: var(--bg-color, #ffffff);
+  color: var(--text-color, #333333);
 }
 
 .command-textarea:focus {
-  background: var(--bg-color-hover);
+  background: var(--bg-color-hover, #f5f5f5);
 }
 
 .panel-footer {
@@ -271,12 +271,12 @@ watch(() => sessionStore.tabs.find(t => t.id === props.tabId), (tab) => {
   justify-content: space-between;
   padding: 6px 12px;
   font-size: 12px;
-  color: var(--text-color-secondary);
-  border-top: 1px solid var(--border-color);
+  color: var(--text-color-secondary, #666666);
+  border-top: 1px solid var(--border-color, #e0e0e0);
 }
 
 .file-name.dirty {
-  color: var(--warning-color);
+  color: var(--warning-color, #f59e0b);
 }
 
 .resize-handle {

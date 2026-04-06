@@ -13,7 +13,7 @@
           <ClockIcon :class="{ 'icon-active': showTimestamp }" />
         </template>
       </NButton>
-      <NButton size="small" quaternary :disabled="!canUseSearch" @click="openSearch">
+      <NButton size="small" quaternary :disabled="!sessionStore.activeTabHasConnection" @click="openSearch">
         <template #icon>
           <SearchIcon />
         </template>
@@ -70,15 +70,7 @@ const showTimestamp = computed(() => {
   return state?.showTimestamps ?? false;
 });
 
-// 当前标签页是否已连接（有 sessionId）
-const canUseSearch = computed(() => {
-  const activeTabId = sessionStore.activeTabId;
-  if (!activeTabId) return false;
-  const activeTab = sessionStore.tabs.find(t => t.id === activeTabId);
-  return !!(activeTab?.sessionId);
-});
-
-const canUseLogging = computed(() => canUseSearch.value);
+const canUseLogging = computed(() => sessionStore.activeTabHasConnection);
 
 const isLogging = computed(() => connectionStore.isLogging);
 

@@ -5,10 +5,9 @@ import { useSessionStore } from './session';
 
 type DataListener = (data: string) => void;
 
-const dataListeners = new Map<string, Set<DataListener>>();
-
 export const useTerminalStore = defineStore('terminal', () => {
   const states = ref<Map<string, TerminalUIState>>(new Map());
+  const dataListeners = ref<Map<string, Set<DataListener>>>(new Map());
 
   const sessionStore = useSessionStore();
 
@@ -28,7 +27,7 @@ export const useTerminalStore = defineStore('terminal', () => {
 
   function removeState(id: string): void {
     states.value.delete(id);
-    dataListeners.delete(id);
+    dataListeners.value.delete(id);
   }
 
   function getState(id: string): TerminalUIState {
@@ -39,17 +38,17 @@ export const useTerminalStore = defineStore('terminal', () => {
   }
 
   function onData(id: string, listener: DataListener): () => void {
-    if (!dataListeners.has(id)) {
-      dataListeners.set(id, new Set());
+    if (!dataListeners.value.has(id)) {
+      dataListeners.value.set(id, new Set());
     }
-    dataListeners.get(id)!.add(listener);
+    dataListeners.value.get(id)!.add(listener);
     return () => {
-      dataListeners.get(id)?.delete(listener);
+      dataListeners.value.get(id)?.delete(listener);
     };
   }
 
   function emitData(id: string, data: string): void {
-    const listeners = dataListeners.get(id);
+    const listeners = dataListeners.value.get(id);
     if (listeners) {
       listeners.forEach(listener => listener(data));
     }

@@ -7,9 +7,6 @@ import { useSessionStore } from './session';
 export const useConnectionStore = defineStore('connection', () => {
   const sessionStore = useSessionStore();
 
-  // Map sessionId to tabId for reverse lookup
-  const sessionIdToTabId = ref<Map<string, string>>(new Map());
-
   // Store connection state by tabId
   const tabStatuses = ref<Map<string, ConnectionStatus>>(new Map());
   const tabConfigs = ref<Map<string, ConnectionParams>>(new Map());
@@ -78,11 +75,6 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   function removeTab(tabId: string): void {
-    const tab = sessionStore.tabs.find(t => t.id === tabId);
-    const sessionId = tab?.sessionId;
-    if (sessionId) {
-      sessionIdToTabId.value.delete(sessionId);
-    }
     tabStatuses.value.delete(tabId);
     tabConfigs.value.delete(tabId);
     tabErrors.value.delete(tabId);
@@ -101,7 +93,6 @@ export const useConnectionStore = defineStore('connection', () => {
     if (result.success && result.data) {
       const sessionId = result.data;
       tabStatuses.value.set(tabId, 'connected');
-      sessionIdToTabId.value.set(sessionId, tabId);
       sessionStore.connectTab(tabId, sessionId);
     } else {
       tabStatuses.value.set(tabId, 'error');
@@ -117,7 +108,6 @@ export const useConnectionStore = defineStore('connection', () => {
     if (!sessionId) return;
 
     tabErrors.value.delete(tabId);
-    // 停止日志记录
     const loggingStatus = getTabLoggingStatus(tabId);
     if (loggingStatus.enabled) {
       await tauriInvoke<void>('stop_logging', { connectionId: sessionId });
@@ -127,7 +117,6 @@ export const useConnectionStore = defineStore('connection', () => {
     if (result.success) {
       tabStatuses.value.set(tabId, 'disconnected');
       tabConfigs.value.delete(tabId);
-      sessionIdToTabId.value.delete(sessionId);
     } else {
       tabStatuses.value.set(tabId, 'error');
       tabErrors.value.set(tabId, result.error || 'Disconnect failed');
@@ -138,7 +127,8 @@ export const useConnectionStore = defineStore('connection', () => {
     if (!sessionId) return;
     const result = await tauriInvoke<ConnectionStatus>('get_connection_status', { params: { connection_id: sessionId } });
     if (result.success && result.data) {
-      const tabId = sessionIdToTabId.value.get(sessionId);
+      const tab = sessionStore.tabs.find(t => t.sessionId === sessionId);
+      const tabId = tab?.id;
       if (tabId) {
         tabStatuses.value.set(tabId, result.data);
       }
@@ -152,7 +142,7 @@ export const useConnectionStore = defineStore('connection', () => {
   async function startLogging(tabId: string, filePath: string) {
     const tab = sessionStore.tabs.find(t => t.id === tabId);
     const sessionId = tab?.sessionId;
-    if (!sessionId) return { success: false, error: 'No active session' };
+    if (!sessionId) return { success: false, error: 'No active connection' };
 
     const result = await tauriInvoke<void>('start_logging', {
       connectionId: sessionId,
@@ -175,7 +165,7 @@ export const useConnectionStore = defineStore('connection', () => {
   async function stopLogging(tabId: string) {
     const tab = sessionStore.tabs.find(t => t.id === tabId);
     const sessionId = tab?.sessionId;
-    if (!sessionId) return { success: false, error: 'No active session' };
+    if (!sessionId) return { success: false, error: 'No active connection' };
 
     const result = await tauriInvoke<void>('stop_logging', { connectionId: sessionId });
 
@@ -190,16 +180,17 @@ export const useConnectionStore = defineStore('connection', () => {
     return result;
   }
 
-  // Methods that work with sessionId instead of tabId (for event handlers)
   function setSessionStatus(sessionId: string, status: ConnectionStatus): void {
-    const tabId = sessionIdToTabId.value.get(sessionId);
+    const tab = sessionStore.tabs.find(t => t.sessionId === sessionId);
+    const tabId = tab?.id;
     if (tabId) {
       tabStatuses.value.set(tabId, status);
     }
   }
 
   function setSessionError(sessionId: string, error: string | null): void {
-    const tabId = sessionIdToTabId.value.get(sessionId);
+    const tab = sessionStore.tabs.find(t => t.sessionId === sessionId);
+    const tabId = tab?.id;
     if (tabId) {
       if (error) {
         tabErrors.value.set(tabId, error);
@@ -210,7 +201,8 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   function removeSession(sessionId: string): void {
-    const tabId = sessionIdToTabId.value.get(sessionId);
+    const tab = sessionStore.tabs.find(t => t.sessionId === sessionId);
+    const tabId = tab?.id;
     if (tabId) {
       removeTab(tabId);
     }
