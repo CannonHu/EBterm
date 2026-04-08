@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { NButton, NIcon, NEmpty, useMessage } from 'naive-ui';
 import { ChevronRight, FolderOpen, Send } from '@vicons/carbon';
 import { useCommandPanelStore } from '../stores/commandPanel';
@@ -186,9 +186,21 @@ function startResize(e: MouseEvent) {
   document.addEventListener('mouseup', onMouseUp);
 }
 
+function handleF10Key(event: KeyboardEvent) {
+  if (event.key === 'F10' && isOpen.value && filePath.value) {
+    event.preventDefault();
+    handleSendSelected();
+  }
+}
+
 // Initialize
 onMounted(() => {
   store.initializeTab(props.tabId);
+  window.addEventListener('keydown', handleF10Key);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleF10Key);
 });
 
 // Watch for tab close

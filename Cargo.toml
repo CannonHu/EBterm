@@ -1,11 +1,11 @@
 [package]
-name = "embedded-debugger"
+name = "ebterm"
 version = "0.1.0"
 edition = "2021"
-authors = ["Embedded Debugger Team"]
+authors = ["alexhu1998@outlook.com"]
 description = "Cross-platform embedded board debugging tool"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/yourusername/embedded-debugger"
+repository = "https://github.com/CannonHu/EBterm"
 
 [workspace]
 members = [".", "src-tauri"]

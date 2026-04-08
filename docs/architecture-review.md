@@ -1,4 +1,4 @@
-# 架构审查报告：embedded-debugger Rust 后端
+# 架构审查报告：ebterm Rust 后端
 
 **审查日期**: 2026-03-25
 **审查者**: Claude Code

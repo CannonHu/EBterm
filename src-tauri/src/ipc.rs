@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 // Re-export core types from lib for convenience
-pub use embedded_debugger::connection::types::{ConnectionStatus, SerialConfig, TelnetConfig};
+pub use ebterm::connection::types::{ConnectionStatus, SerialConfig, TelnetConfig};
 
 /// IPC error type
 #[derive(Debug, Clone, Serialize, Deserialize)]

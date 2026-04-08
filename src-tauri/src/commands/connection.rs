@@ -7,7 +7,7 @@ use crate::state::AppState;
 #[tauri::command]
 pub async fn list_serial_ports() -> CommandResponse<Vec<SerialPortInfo>> {
     // Use lib layer's discovery function
-    match embedded_debugger::connection::discover_serial_ports() {
+    match ebterm::connection::discover_serial_ports() {
         Ok(ports) => {
             let port_infos: Vec<SerialPortInfo> = ports
                 .into_iter()
@@ -30,13 +30,13 @@ pub async fn list_serial_ports() -> CommandResponse<Vec<SerialPortInfo>> {
 }
 
 /// Convert IPC params to lib config
-fn convert_connection_params(params: ConnectionParams) -> embedded_debugger::connection::types::ConnectionConfig {
+fn convert_connection_params(params: ConnectionParams) -> ebterm::connection::types::ConnectionConfig {
     match params {
         ConnectionParams::Serial(serial_params) => {
-            embedded_debugger::connection::types::ConnectionConfig::Serial(serial_params)
+            ebterm::connection::types::ConnectionConfig::Serial(serial_params)
         }
         ConnectionParams::Telnet(telnet_params) => {
-            embedded_debugger::connection::types::ConnectionConfig::Telnet(telnet_params)
+            ebterm::connection::types::ConnectionConfig::Telnet(telnet_params)
         }
     }
 }
@@ -52,15 +52,15 @@ pub async fn connect(
 
     // Create connection handle using factory
     let handle = match connection_config {
-        embedded_debugger::connection::types::ConnectionConfig::Serial(serial_config) => {
-            embedded_debugger::connection::types::ConnectionFactory::create_serial(serial_config)
+        ebterm::connection::types::ConnectionConfig::Serial(serial_config) => {
+            ebterm::connection::types::ConnectionFactory::create_serial(serial_config)
         }
-        embedded_debugger::connection::types::ConnectionConfig::Telnet(telnet_config) => {
-            embedded_debugger::connection::types::ConnectionFactory::create_telnet(telnet_config)
+        ebterm::connection::types::ConnectionConfig::Telnet(telnet_config) => {
+            ebterm::connection::types::ConnectionFactory::create_telnet(telnet_config)
         }
     };
 
-    let handle: embedded_debugger::connection::ConnectionHandle =
+    let handle: ebterm::connection::ConnectionHandle =
         std::sync::Arc::new(tokio::sync::Mutex::new(handle));
 
     // Connect to the target
@@ -123,7 +123,7 @@ pub async fn disconnect(
 pub async fn get_connection_status(
     state: tauri::State<'_, AppState>,
     params: crate::ipc::GetConnectionStatusParams,
-) -> CommandResponse<embedded_debugger::connection::types::ConnectionStatus> {
+) -> CommandResponse<ebterm::connection::types::ConnectionStatus> {
     let crate::ipc::GetConnectionStatusParams { connection_id } = params;
 
     let connections = state.connections.read().await;

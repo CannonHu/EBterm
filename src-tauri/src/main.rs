@@ -1,4 +1,4 @@
-//! Tauri application entry point for embedded-debugger
+//! Tauri application entry point for ebterm
 
 mod connection_context;
 mod commands;

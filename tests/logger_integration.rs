@@ -1,4 +1,4 @@
-use embedded_debugger::logger::FileLogger;
+use ebterm::logger::FileLogger;
 use std::io::Read;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -63,7 +63,7 @@ async fn test_logger_write_not_started() {
     let logger = FileLogger::new();
     let result = logger.write("test");
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), embedded_debugger::logger::LoggerError::NotStarted));
+    assert!(matches!(result.unwrap_err(), ebterm::logger::LoggerError::NotStarted));
 }
 
 #[tokio::test]

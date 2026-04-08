@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "embedded-debugger",
+  "productName": "ebterm",
   "version": "0.1.0",
-  "identifier": "com.embedded-debugger.app",
+  "identifier": "com.ebterm.app",
   "build": {
     "beforeDevCommand": "cd /Users/spg/Workspace/Playground/toy_term/frontend && bun run dev",
     "beforeBuildCommand": "cd /Users/spg/Workspace/Playground/toy_term/frontend && bun run build",

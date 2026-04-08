@@ -3,7 +3,7 @@
 use super::{CommandResponse, ok, err};
 use crate::ipc::{LoggingStatus, LogDirection};
 use crate::state::AppState;
-use embedded_debugger::logger::FileLogger;
+use ebterm::logger::FileLogger;
 use std::path::Path;
 
 #[tauri::command]

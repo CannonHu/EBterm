@@ -1,9 +1,9 @@
 [package]
-name = "embedded-debugger-tauri"
+name = "EBterm-tauri"
 version = "0.1.0"
 edition = "2021"
 authors = ["Embedded Debugger Team"]
-description = "Tauri application for embedded-debugger"
+description = "Tauri application for EBterm"
 license = "MIT OR Apache-2.0"
 
 [build-dependencies]
@@ -21,7 +21,7 @@ uuid = { version = "1.6", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 chrono = "0.4"
-embedded-debugger = { path = ".." }
+ebterm = { path = ".." }
 serial2 = "0.1"
 
 [features]

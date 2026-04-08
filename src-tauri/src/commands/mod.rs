@@ -1,4 +1,4 @@
-//! Tauri IPC commands for embedded-debugger
+//! Tauri IPC commands for ebterm
 //!
 //! Provides command handlers for frontend-to-backend communication
 

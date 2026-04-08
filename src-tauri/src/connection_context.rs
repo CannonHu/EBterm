@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use embedded_debugger::connection::{ConnectionHandle, ConnectionConfig, ConnectionStats};
+use ebterm::connection::{ConnectionHandle, ConnectionConfig, ConnectionStats};
 
 use crate::data_streamer::start_batch_streamer;
 
@@ -26,7 +26,7 @@ pub struct ConnectionContext {
     pub created_at: Instant,
 
     /// Optional file logger
-    pub logger: Option<embedded_debugger::logger::FileLogger>,
+    pub logger: Option<ebterm::logger::FileLogger>,
 }
 
 impl ConnectionContext {

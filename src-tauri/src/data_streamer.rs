@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use tauri::{Emitter, Manager};
 
-use embedded_debugger::connection::ConnectionHandle;
+use ebterm::connection::ConnectionHandle;
 
 use crate::ipc::DataReceivedEvent;
 use crate::state::AppState;

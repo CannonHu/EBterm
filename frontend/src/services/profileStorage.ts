@@ -2,7 +2,7 @@ import { readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-f
 import { BaseDirectory } from '@tauri-apps/plugin-fs'
 import type { ConnectionParams, SavedProfile, ProfileStorage } from '../types/ipc'
 
-const PROFILE_DIR = 'embedded-debugger'
+const PROFILE_DIR = 'ebterm'
 const PROFILE_FILE = 'profiles.json'
 const MAX_PROFILES = 100
 

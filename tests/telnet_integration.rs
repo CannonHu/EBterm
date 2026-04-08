@@ -1,4 +1,4 @@
-use embedded_debugger::connection::{
+use ebterm::connection::{
     Connection, ConnectionError, ConnectionStatus, TelnetConfig, TelnetConnection,
 };
 use std::net::SocketAddr;
@@ -83,7 +83,7 @@ fn test_telnet_connection_creation() {
 
     assert_eq!(
         conn.connection_type(),
-        embedded_debugger::connection::ConnectionType::Telnet
+        ebterm::connection::ConnectionType::Telnet
     );
     assert_eq!(conn.status(), ConnectionStatus::Disconnected);
     assert!(!conn.is_connected());
